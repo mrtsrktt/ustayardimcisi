@@ -38,6 +38,9 @@ class ResultScreen extends ConsumerStatefulWidget {
 class _ResultScreenState extends ConsumerState<ResultScreen> {
   int _tab = 0;
   String? _pdfPath, _excelPath;
+  final _marjCtrl = TextEditingController();
+  double _marjYuzde = 0;
+  double _teklifTutar = 0;
 
   late List<Part> _allParts;
   late List<SheetLayout> _sheets;
@@ -343,89 +346,172 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   // ─── TAB 1: Malzeme Listesi ──────────────────────────────────────────
 
   Widget _tabMalzemeListesi(Map<String, double> metraj) {
+    final teklif = _teklifTutar > 0 ? _teklifTutar : (_marjYuzde > 0 ? _costReport.subtotal * (1 + _marjYuzde / 100) : 0.0);
+    final teklifVat = teklif > 0 ? teklif * 0.20 : 0.0;
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // --- KESIM LISTESI (GRUPLU) ---
+        // ═══ KESIM LISTESI (GRUPLU) ═══
         Text('Kesim Listesi', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
-
-        // Group parts by material
+        const SizedBox(height: 8),
         ..._buildGroupedCutList(),
-
         const Divider(height: 24),
 
-        // Plakalar
-        _section('Plakalar', Icons.grid_view, Colors.blue),
+        // ═══ PLAKALAR ═══
+        _section('PLAKALAR', Icons.grid_view, Colors.blue),
         ..._sheets.asMap().entries.map((e) {
           final s = e.value;
-          return ListTile(
-            dense: true,
-            leading: CircleAvatar(radius: 14, backgroundColor: Colors.blue.withAlpha(25),
-                child: Text('${e.key + 1}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-            title: Text('${s.widthMm.toInt()}×${s.lengthMm.toInt()} mm', style: const TextStyle(fontSize: 15)),
-            subtitle: Text('${s.partCount} parca — Fire %${s.wastePct.toStringAsFixed(1)}',
-                style: const TextStyle(fontSize: 13)),
+          final platePrice = _costReport.lines
+              .where((l) => l.unit == 'plaka' && s.material.contains(l.item.replaceAll(' plaka', '')))
+              .fold<double>(0, (sum, l) => l.unitPrice);
+          final priceText = platePrice > 0 ? '${platePrice.toInt()} TL' : '—';
+          return Card(
+            margin: const EdgeInsets.only(bottom: 4),
+            child: ListTile(
+              leading: CircleAvatar(radius: 16, backgroundColor: Colors.blue.withAlpha(25),
+                  child: Text('${e.key + 1}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold))),
+              title: Text(s.material, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+              subtitle: Text('${s.widthMm.toInt()}×${s.lengthMm.toInt()} mm  |  ${s.partCount} parca  |  Fire %${s.wastePct.toStringAsFixed(1)}',
+                  style: const TextStyle(fontSize: 13)),
+              trailing: Text(priceText, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            ),
           );
         }),
         const Divider(height: 24),
 
-        // Bant
-        _section('Kenar Bandi', Icons.straighten, Colors.purple),
-        ...metraj.entries.map((e) => ListTile(
-          dense: true, title: Text(e.key, style: const TextStyle(fontSize: 15)),
-          trailing: Text('${e.value.toStringAsFixed(1)} m', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-        )),
-        ListTile(dense: true,
-          title: const Text('TOPLAM (+%10 fire)', style: TextStyle(fontWeight: FontWeight.bold)),
-          trailing: Text('${_bandingMetraj.toStringAsFixed(1)} m', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.purple)),
+        // ═══ KENAR BANDI ═══
+        _section('KENAR BANDI', Icons.straighten, Colors.purple),
+        ..._costReport.lines
+            .where((l) => l.item.contains('Kenar bandı'))
+            .map((l) => ListTile(
+              dense: true,
+              title: Text(l.item, style: const TextStyle(fontSize: 14)),
+              trailing: Text('${l.qty.toStringAsFixed(1)} m  ×  ${l.unitPrice.toInt()} TL  =  ${l.total.toInt()} TL',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+            )),
+        ..._costReport.lines
+            .where((l) => l.item.contains('Bantlama isciligi'))
+            .map((l) => ListTile(
+              dense: true,
+              title: Text(l.item, style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic)),
+              trailing: Text('${l.qty.toStringAsFixed(1)} m  ×  ${l.unitPrice.toInt()} TL  =  ${l.total.toInt()} TL',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+            )),
+        const Divider(height: 24),
+
+        // ═══ DONANIM ═══
+        _section('DONANIM', Icons.build, Colors.teal),
+        ..._hardware.entries.map((e) {
+          final hwLine = _costReport.lines.where((l) => l.item == e.key ||
+              l.item.contains(e.key)).firstOrNull;
+          final birimFiyat = hwLine?.unitPrice ?? 0;
+          final tutar = hwLine?.total ?? 0;
+          return ListTile(
+            dense: true,
+            title: Text(e.key, style: const TextStyle(fontSize: 14)),
+            trailing: Text('${e.value} adet  ×  ${birimFiyat.toInt()} TL  =  ${tutar.toInt()} TL',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          );
+        }),
+        const Divider(height: 24),
+
+        // ═══ KESIM UCRETI ═══
+        _section('KESIM UCRETI', Icons.cut, Colors.orange),
+        ListTile(
+          title: const Text('Plaka basi kesim', style: TextStyle(fontSize: 14)),
+          trailing: Text('${_sheets.length} plaka  ×  100 TL  =  ${_sheets.length * 100} TL',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         ),
         const Divider(height: 24),
 
-        // Donanim
-        _section('Donanim', Icons.build, Colors.teal),
-        ..._hardware.entries.map((e) => ListTile(
-          dense: true, title: Text(e.key, style: const TextStyle(fontSize: 15)),
-          trailing: Text('${e.value} adet', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-        )),
-        const Divider(height: 24),
-
-        // --- MALIYET DETAYI ---
-        Text('Maliyet Detayi', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
+        // ═══ TOPLAM ═══
         Card(
+          color: Colors.blue.withAlpha(12),
+          elevation: 3,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Table(
-              columnWidths: const {0: FlexColumnWidth(3), 1: FlexColumnWidth(1), 2: FlexColumnWidth(1), 3: FlexColumnWidth(1)},
+            padding: const EdgeInsets.all(20),
+            child: Column(
               children: [
-                _tableHeader(['Kalem', 'Miktar', 'Birim Fiyat', 'Tutar']),
-                ..._costReport.lines.map((l) => TableRow(
-                  children: [
-                    _cell(l.item, align: TextAlign.left),
-                    _cell('${l.qty.toStringAsFixed(l.unit == 'm' ? 1 : 0)} ${l.unit}'),
-                    _cell('${l.unitPrice.toInt()} TL'),
-                    _cell('${l.total.toInt()} TL', bold: true),
-                  ],
-                )),
+                Text('TOPLAM', style: Theme.of(context).textTheme.headlineMedium),
+                const SizedBox(height: 16),
+                _toplamSatir('Ara Toplam (KDV haric)', _costReport.subtotal, size: 20),
+                const SizedBox(height: 8),
+                _toplamSatir('KDV (%20)', _costReport.vat, size: 18, color: Colors.grey[700]),
+                const Divider(height: 24),
+                _toplamSatir('GENEL TOPLAM', _costReport.total, bold: true, size: 24, color: Colors.red),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
 
-        // Toplam
+        // ═══ TEKLIF ═══
         Card(
-          color: Colors.blue.withAlpha(15),
+          elevation: 3,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _toplamSatir('Ara Toplam', _costReport.subtotal),
-                _toplamSatir('Kar (%${_costReport.marginPct.toInt()})', _costReport.customerPrice - _costReport.subtotal),
-                const Divider(),
-                _toplamSatir('Teklif Fiyati', _costReport.customerPrice, bold: true, color: Colors.blue),
-                _toplamSatir('KDV Dahil', _costReport.total, color: Colors.red),
+                Text('TEKLIF', style: Theme.of(context).textTheme.headlineMedium),
+                const SizedBox(height: 12),
+                Text('Kar marji veya teklif tutari girin:', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _marjCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Kar marji (%)',
+                          hintText: 'ornek: 25',
+                          suffixText: '%',
+                          prefixIcon: Icon(Icons.percent, size: 24),
+                        ),
+                        keyboardType: TextInputType.number,
+                        onChanged: (v) {
+                          setState(() {
+                            _marjYuzde = double.tryParse(v) ?? 0;
+                            _teklifTutar = 0;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text('veya', style: TextStyle(fontSize: 16, color: Colors.grey[500])),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        decoration: const InputDecoration(
+                          labelText: 'Teklif Tutari',
+                          hintText: 'ornek: 20000',
+                          suffixText: 'TL',
+                          prefixIcon: Icon(Icons.payment, size: 24),
+                        ),
+                        keyboardType: TextInputType.number,
+                        onChanged: (v) {
+                          setState(() {
+                            _teklifTutar = double.tryParse(v) ?? 0;
+                            _marjYuzde = 0;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (teklif > 0) ...[
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  _toplamSatir('Teklif Tutari', teklif, bold: true, size: 22, color: Colors.blue),
+                  _toplamSatir('KDV (%20)', teklifVat, size: 16, color: Colors.grey[700]),
+                  const SizedBox(height: 4),
+                  _toplamSatir('TEKLIF (KDV Dahil)', teklif + teklifVat, bold: true, size: 26, color: Colors.green),
+                ] else
+                  Text('Teklif: —', style: TextStyle(fontSize: 22, color: Colors.grey[400], fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -527,15 +613,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     );
   }
 
-  Widget _toplamSatir(String label, double value, {bool bold = false, Color? color}) {
+  Widget _toplamSatir(String label, double value, {bool bold = false, Color? color, double size = 18}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: 16, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
+          Text(label, style: TextStyle(fontSize: size - 2, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
           Text('${value.toInt()} TL',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color ?? Colors.black)),
+              style: TextStyle(fontSize: size, fontWeight: FontWeight.bold, color: color ?? Colors.black)),
         ],
       ),
     );
