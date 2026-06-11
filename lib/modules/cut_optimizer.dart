@@ -137,6 +137,53 @@ class CutOptimizer {
 
       if (placed_) continue;
 
+      // Best-fit: try gaps between parts in existing shelves
+      for (final shelf in shelves) {
+        if (item.netLength > shelf.height) continue;
+        // Collect gaps in this shelf (spaces between parts)
+        final gaps = <({double x, double w})>[];
+        double prevRight = config.trimMm;
+        // Sort shelf parts by X
+        final sorted = List<_PlacedItem>.from(shelf.placed)..sort((a, b) => a.xMm.compareTo(b.xMm));
+        for (final p in sorted) {
+          if (p.xMm - prevRight >= config.kerfMm + item.netWidth) {
+            gaps.add((x: prevRight, w: p.xMm - prevRight - config.kerfMm));
+          }
+          prevRight = p.xMm + p.widthMm + config.kerfMm;
+        }
+        // Gap at end of shelf
+        final endGap = plateW - config.trimMm - prevRight;
+        if (endGap >= item.netWidth) {
+          gaps.add((x: prevRight, w: endGap));
+        }
+        // Try each gap
+        for (final gap in gaps) {
+          if (item.netWidth <= gap.w) {
+            shelf.placed.add(_PlacedItem(
+              label: item.label, xMm: gap.x, yMm: shelf.yMm,
+              widthMm: item.netWidth, lengthMm: item.netLength,
+              rotated: false, id: item._id, material: item.material,
+            ));
+            placed.add(shelf.placed.last);
+            placed_ = true;
+            break;
+          }
+          if (!item.grainLocked && item.netLength <= gap.w && item.netWidth <= shelf.height) {
+            shelf.placed.add(_PlacedItem(
+              label: item.label, xMm: gap.x, yMm: shelf.yMm,
+              widthMm: item.netLength, lengthMm: item.netWidth,
+              rotated: true, id: item._id, material: item.material,
+            ));
+            placed.add(shelf.placed.last);
+            placed_ = true;
+            break;
+          }
+        }
+        if (placed_) break;
+      }
+
+      if (placed_) continue;
+
       // Start new shelf
       final lastShelfBottom = shelves.isEmpty
           ? config.trimMm
