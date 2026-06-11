@@ -66,7 +66,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final cutConfig = CutConfig.fromSettings(settingsMap);
 
     final engine = ModuleEngine(settings: appSettings);
-    final optimizer = CutOptimizer(config: cutConfig);
 
     // Build MaterialSpec from wizard selections
     final mat = MaterialSpec(
@@ -78,20 +77,62 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       arkalikThicknessMm: widget.arkalikKalinlik,
     );
 
+    // Material-specific plate sizes (Madde 2: zorunlu ebat secimi)
+    final isKapakHG = widget.altKapakMalzeme == 'High Gloss' || widget.altKapakMalzeme == 'Akrilik';
+    final govdeSize = cutConfig.materialSizes['govde'] ?? PlateSize.std2100x2800;
+    final kapakSize = isKapakHG ? PlateSize.std1220x2800 : (cutConfig.materialSizes['kapak'] ?? PlateSize.std2100x2800);
+    final arkalikSize = cutConfig.materialSizes['arkalik'] ?? PlateSize.std2100x2800;
+
+    final optimizer = CutOptimizer(config: CutConfig(
+      kerfMm: cutConfig.kerfMm,
+      trimMm: cutConfig.trimMm,
+      materialSizes: {
+        'govde': govdeSize,
+        'kapak': kapakSize,
+        'arkalik': arkalikSize,
+      },
+    ));
+
     final placement = PlacementEngine.placeLower(PlacementInput(
         wallLengthMm: widget.wallLengthMm, isLower: true));
     final ustPlacement = PlacementEngine.placeUpper(PlacementInput(
         wallLengthMm: widget.wallLengthMm, isLower: false));
 
     _allParts = [];
+    final modCounts = <String, int>{};
     for (final m in placement.modules) {
-      _allParts.addAll(engine.generateParts(m.toModule(740, 560, params: ModuleParams(
+      final code = m.code.name.toUpperCase();
+      modCounts[code] = (modCounts[code] ?? 0) + 1;
+      final instanceMod = m.toModule(740, 560, params: ModuleParams(
           rafSayisi: m.code == ModuleCode.a3 ? 0 : 1,
-          cekmeceSayisi: m.code == ModuleCode.a3 ? widget.cekmeceSayisi : 0)), mat));
+          cekmeceSayisi: m.code == ModuleCode.a3 ? widget.cekmeceSayisi : 0));
+      var parts = engine.generateParts(instanceMod, mat);
+      // Add instance suffix to labels
+      parts = parts.map((p) => Part(
+        moduleId: '${p.moduleId}-${modCounts[code]}',
+        name: p.name, qty: p.qty,
+        netWidthMm: p.netWidthMm, netLengthMm: p.netLengthMm,
+        thicknessMm: p.thicknessMm, material: p.material, role: p.role,
+        banding: p.banding, grainLocked: p.grainLocked,
+        label: p.label?.replaceFirst(p.moduleId, '${p.moduleId}-${modCounts[code]}'),
+      )).toList();
+      _allParts.addAll(parts);
     }
     for (final m in ustPlacement.modules) {
-      _allParts.addAll(engine.generateParts(m.toModule(720, 320, params: ModuleParams(
-          rafSayisi: 2, camli: widget.camli)), mat));
+      final code = m.code.name.toUpperCase();
+      modCounts[code] = (modCounts[code] ?? 0) + 1;
+      final instanceMod = m.toModule(720, 320, params: ModuleParams(
+          rafSayisi: 2, camli: widget.camli));
+      var parts = engine.generateParts(instanceMod, mat);
+      parts = parts.map((p) => Part(
+        moduleId: '${p.moduleId}-${modCounts[code]}',
+        name: p.name, qty: p.qty,
+        netWidthMm: p.netWidthMm, netLengthMm: p.netLengthMm,
+        thicknessMm: p.thicknessMm, material: p.material, role: p.role,
+        banding: p.banding, grainLocked: p.grainLocked,
+        label: p.label?.replaceFirst(p.moduleId, '${p.moduleId}-${modCounts[code]}'),
+      )).toList();
+      _allParts.addAll(parts);
     }
 
     _hardware = {};

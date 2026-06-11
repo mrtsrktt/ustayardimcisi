@@ -68,7 +68,7 @@ class PdfReportGenerator {
           pw.Header(level: 1, text: 'Plaka ${i + 1}/${sheets.length} - ${sheet.material}'),
           pw.Paragraph(text: '${sheet.widthMm.toInt()}×${sheet.lengthMm.toInt()} mm | ${sheet.partCount} parca | Fire: %${sheet.wastePct.toStringAsFixed(1)}'),
           pw.Paragraph(
-            text: 'Malzeme: ${sheet.material} | Kalinlik: ${sheet.material.contains("8mm") ? "8" : "18"} mm | Parca: ${sheet.partCount} adet',
+            text: 'Malzeme: ${sheet.material} | Parca: ${sheet.partCount} adet',
             style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
           ),
           pw.SizedBox(height: 10),

@@ -122,8 +122,8 @@ class CutOptimizer {
           break;
         }
 
-        // Rotated
-        if (!item.grainLocked && item.netLength <= remainingW) {
+        // Rotated: netWidth becomes Y/length, must fit shelf height
+        if (!item.grainLocked && item.netLength <= remainingW && item.netWidth <= shelf.height) {
           shelf.placed.add(_PlacedItem(
             label: item.label, xMm: rightmostX, yMm: shelf.yMm,
             widthMm: item.netLength, lengthMm: item.netWidth,
@@ -154,6 +154,30 @@ class CutOptimizer {
       }
       // else: part doesn't fit on this sheet at all → skip (will go to next sheet)
     }
+
+    // Validate: remove parts that exceed plate or overlap
+    final valid = <_PlacedItem>[];
+    for (final p in placed) {
+      if (p.xMm < 0 || p.yMm < 0 ||
+          p.xMm + p.widthMm > plateW + 0.5 ||
+          p.yMm + p.lengthMm > plateL + 0.5) {
+        continue; // skip out-of-bounds part
+      }
+      bool hasOverlap = false;
+      for (final existing in valid) {
+        if (p.xMm < existing.xMm + existing.widthMm &&
+            p.xMm + p.widthMm > existing.xMm &&
+            p.yMm < existing.yMm + existing.lengthMm &&
+            p.yMm + p.lengthMm > existing.yMm) {
+          hasOverlap = true;
+          break;
+        }
+      }
+      if (!hasOverlap) valid.add(p);
+    }
+    placed
+      ..clear()
+      ..addAll(valid);
 
     // Calculate waste
     final totalArea = plateW * plateL;
