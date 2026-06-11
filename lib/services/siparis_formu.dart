@@ -6,6 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:excel/excel.dart';
 import '../models/project.dart';
+import '../modules/cut_optimizer.dart';
 
 // ─── Siparis Satiri (konsolide) ────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ class SiparisFormuGenerator {
   /// Generate PDF with per-material siparis formu pages + plate schemas.
   static Future<File> generatePdf({
     required List<Part> allParts,
-    required List<dynamic> sheets,
+    required List<SheetLayout> sheets,
     required String projectName,
     required String customerName,
     String? outputPath,
@@ -57,7 +58,7 @@ class SiparisFormuGenerator {
     // Siparis formu pages (one per material)
     for (final mat in sortedMats) {
       final parts = matGroups[mat]!;
-      final rows = _consolidate(parts);
+      final rows = consolidate(parts);
       final sheetSize = _findSheetSize(sheets, mat);
       final totalAdet = rows.fold<int>(0, (s, r) => s + r.adet);
 
@@ -85,10 +86,11 @@ class SiparisFormuGenerator {
 
           // Table
           pw.TableHelper.fromTextArray(
-            headers: ['NO', 'BOY (cm)', 'EN (cm)', 'ADET', 'BANT', 'RENK'],
+            headers: ['NO', 'BOY (cm)', 'EN (cm)', 'ADET', 'B|B|E|E', 'RENK'],
             data: rows.asMap().entries.map((e) {
               final r = e.value;
-              final bantStr = '${r.bant[0]?"B":""} ${r.bant[1]?"B":""} ${r.bant[2]?"E":""} ${r.bant[3]?"E":""}';
+              // Furkan standard: 4 fixed boxes B|B|E|E (Boy×2, En×2)
+              final bantStr = '${r.bant[0]?"X":"."} ${r.bant[1]?"X":"."} ${r.bant[2]?"X":"."} ${r.bant[3]?"X":"."}';
               return [
                 '${e.key + 1}',
                 r.boyCm.toStringAsFixed(1),
@@ -114,13 +116,16 @@ class SiparisFormuGenerator {
 
           // Bant Ozeti (sadece bu malzeme icin)
           pw.Header(level: 2, text: 'Bant Ozeti', textStyle: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-          ..._buildBantOzeti(parts).map((row) => pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Text(row[0], style: const pw.TextStyle(fontSize: 9)),
-              pw.Text(row[1], style: const pw.TextStyle(fontSize: 9)),
-            ],
-          )),
+          ..._buildBantOzeti(parts).map((row) => pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(vertical: 1),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(row[0], style: const pw.TextStyle(fontSize: 9)),
+                pw.Text(row[1], style: const pw.TextStyle(fontSize: 9)),
+              ],
+            ),
+          )).toList(),
         ],
       ));
     }
@@ -184,7 +189,7 @@ class SiparisFormuGenerator {
   /// Generate Excel with per-material sheets.
   static Future<File> generateExcel({
     required List<Part> allParts,
-    required List<dynamic> sheets,
+    required List<SheetLayout> sheets,
     required String projectName,
     String? outputPath,
   }) async {
@@ -204,7 +209,7 @@ class SiparisFormuGenerator {
       final sheetName = mat.length > 25 ? mat.substring(0, 25) : mat;
       final sheet = excel[sheetName];
       final parts = matGroups[mat]!;
-      final rows = _consolidate(parts);
+      final rows = consolidate(parts);
 
       // Header info
       sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0))
@@ -215,7 +220,7 @@ class SiparisFormuGenerator {
         ..value = TextCellValue('Proje: $projectName  Tarih: ${DateTime.now().toString().substring(0, 10)}');
 
       // Table headers
-      final headers = ['NO', 'BOY (cm)', 'EN (cm)', 'ADET', 'BANT B/B/E/E', 'RENK'];
+      final headers = ['NO', 'BOY (cm)', 'EN (cm)', 'ADET', 'B|B|E|E', 'RENK'];
       for (var c = 0; c < headers.length; c++) {
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 4))
           ..value = TextCellValue(headers[c]) ..cellStyle = CellStyle(bold: true);
@@ -224,7 +229,7 @@ class SiparisFormuGenerator {
       var row = 5;
       for (var i = 0; i < rows.length; i++) {
         final r = rows[i];
-        final bantStr = '${r.bant[0]?"B":""} ${r.bant[1]?"B":""} ${r.bant[2]?"E":""} ${r.bant[3]?"E":""}';
+        final bantStr = '${r.bant[0]?"✓":"·"} ${r.bant[1]?"✓":"·"} ${r.bant[2]?"✓":"·"} ${r.bant[3]?"✓":"·"}';
         final vals = [i + 1, r.boyCm.toStringAsFixed(1), r.enCm.toStringAsFixed(1), r.adet, bantStr, r.renk];
         for (var c = 0; c < vals.length; c++) {
           sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: row))
@@ -243,7 +248,7 @@ class SiparisFormuGenerator {
   // ─── Consolidation ──────────────────────────────────────────────────────
 
   /// Consolidate parts: same (en,boy) + same band pattern → single row, adet++
-  static List<_SiparisRow> _consolidate(List<Part> parts) {
+  static List<_SiparisRow> consolidate(List<Part> parts) {
     final map = <String, _SiparisRow>{};
     for (final p in parts) {
       for (var q = 0; q < p.qty; q++) {
@@ -271,7 +276,7 @@ class SiparisFormuGenerator {
   }
 
   /// Find sheet size for a material from sheet list.
-  static String _findSheetSize(List<dynamic> sheets, String material) {
+  static String _findSheetSize(List<SheetLayout> sheets, String material) {
     for (final s in sheets) {
       if (s.material == material) {
         return '${s.widthMm.toInt()}x${s.lengthMm.toInt()} mm';

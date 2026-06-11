@@ -8,6 +8,7 @@ import 'package:ustayardimcisi/modules/module_engine.dart';
 import 'package:ustayardimcisi/modules/cut_optimizer.dart';
 import 'package:ustayardimcisi/services/cost_service.dart';
 import 'package:ustayardimcisi/services/report_service.dart';
+import 'package:ustayardimcisi/services/siparis_formu.dart';
 
 void main() {
   group('Mixed Material Scenario', () {
@@ -345,6 +346,39 @@ void main() {
         print('  ${l.item}: ${l.qty.toInt()} plaka × ${l.unitPrice.toInt()} TL = ${l.total.toInt()} TL');
       }
       print('  Teklif Fiyati: ${report.formattedCustomerPrice}');
+    });
+
+    test('MADDE4: Ref senaryo 3xA2+3xU2+U1 MDFlam+Akrilik', () async {
+      final mat = MaterialSpec(bodyMaterial: MalzemeTip.mdflam, bodyColor: 'Beyaz',
+          doorMaterial: MalzemeTip.akrilik, doorColor: 'Beyaz', arkalikThicknessMm: 8);
+      final mods = [
+        Module(code: ModuleCode.a2, xPosMm: 0, widthMm: 600, heightMm: 740, depthMm: 560, params: const ModuleParams(rafSayisi: 1)),
+        Module(code: ModuleCode.a2, xPosMm: 600, widthMm: 800, heightMm: 740, depthMm: 560, params: const ModuleParams(rafSayisi: 1, gorunurYan: true)),
+        Module(code: ModuleCode.a2, xPosMm: 1400, widthMm: 500, heightMm: 740, depthMm: 560, params: const ModuleParams(rafSayisi: 1)),
+        Module(code: ModuleCode.u2, xPosMm: 0, widthMm: 600, heightMm: 720, depthMm: 320, params: const ModuleParams(rafSayisi: 2)),
+        Module(code: ModuleCode.u2, xPosMm: 600, widthMm: 800, heightMm: 720, depthMm: 320, params: const ModuleParams(rafSayisi: 2)),
+        Module(code: ModuleCode.u2, xPosMm: 1400, widthMm: 500, heightMm: 720, depthMm: 320, params: const ModuleParams(rafSayisi: 2)),
+        Module(code: ModuleCode.u1, xPosMm: 1900, widthMm: 500, heightMm: 720, depthMm: 320, params: const ModuleParams(rafSayisi: 2)),
+      ];
+      final parts = <Part>[];
+      for (final m in mods) { parts.addAll(engine.generateParts(m, mat)); }
+      final opt = CutOptimizer(config: CutConfig(materialSizes: {
+        'govde': PlateSize.std2100x2800, 'kapak': PlateSize.std1220x2800, 'arkalik': PlateSize.std2100x2800,
+      }));
+      final sheets = opt.optimize(parts);
+      print('\n  === REF SENARYO ===');
+      for (final s in sheets) {
+        print('  ${s.material}: ${s.widthMm.toInt()}x${s.lengthMm.toInt()} %${s.wastePct.toStringAsFixed(1)} fire');
+        expect(s.wastePct, greaterThanOrEqualTo(0));
+      }
+      final dir = Directory('test_output'); if (!dir.existsSync()) dir.createSync(recursive: true);
+      await SiparisFormuGenerator.generatePdf(allParts: parts, sheets: sheets, projectName: 'Ref', customerName: 'Test', outputPath: 'test_output/ref_senaryo.pdf');
+      await SiparisFormuGenerator.generateExcel(allParts: parts, sheets: sheets, projectName: 'Ref', outputPath: 'test_output/ref_senaryo.xlsx');
+      final k = SiparisFormuGenerator.consolidate(parts);
+      print('  Konsolide: ${k.length} satir (ham: ${parts.fold<int>(0,(s,p)=>s+p.qty)})');
+      for (var i=0;i<(k.length<5?k.length:5);i++) {
+        final r=k[i]; print('  ${r.boyCm.toStringAsFixed(1)}x${r.enCm.toStringAsFixed(1)}cm | ${r.adet}x | ${r.renk}');
+      }
     });
   });
 }
