@@ -348,7 +348,7 @@ class BandingCalculator {
     for (final p in parts) {
       for (var e = 0; e < 4; e++) {
         if (p.banding[e] > 0) {
-          final color = p.material == 'Kapak' ? 'Kapak rengi' : 'Govde rengi';
+          final color = p.role == 'kapak' ? 'Kapak rengi' : 'Govde rengi';
           final key = '$color ${p.banding[e]}mm';
           final length = e <= 1 ? p.netWidthMm : p.netLengthMm;
           groups[key] = (groups[key] ?? 0) + length * p.qty / 1000;
