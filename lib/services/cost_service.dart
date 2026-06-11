@@ -233,7 +233,7 @@ class CostReport {
   }
 
   String get formattedCustomerPrice =>
-      '${customerPrice.toStringAsFixed(0)} TL';
+      customerPrice > 0 ? '${customerPrice.toStringAsFixed(0)} TL' : '—';
 
   String get formattedTotal =>
       '${total.toStringAsFixed(0)} TL (KDV dahil)';
@@ -393,16 +393,15 @@ class CostCalculator {
     final subtotal = lines.fold<double>(0, (sum, l) => sum + l.total);
     final vat = subtotal * vatRate;
     final total = subtotal + vat;
-    final customerPrice = subtotal * (1 + defaultMarginPct / 100);
-
+    // Customer price = subtotal (usta kendi girecek, varsayilan: —)
     return CostReport(
       lines: lines,
       subtotal: subtotal,
       vatRate: vatRate,
       vat: vat,
       total: total,
-      marginPct: defaultMarginPct,
-      customerPrice: customerPrice,
+      marginPct: 0,        // usta girene kadar 0
+      customerPrice: 0,    // usta girene kadar 0 (—)
     );
   }
 }

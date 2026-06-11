@@ -68,10 +68,9 @@ void main() {
       expect(report.subtotal, greaterThan(0));
       expect(report.vat, greaterThan(0));
       expect(report.total, greaterThan(report.subtotal));
-      expect(report.customerPrice, greaterThan(report.subtotal));
-
-      // With 25% margin, customer price should be roughly subtotal * 1.25
-      expect(report.customerPrice, closeTo(report.subtotal * 1.25, report.subtotal * 0.05));
+      // Teklif fiyati usta girene kadar 0 (—)
+      expect(report.customerPrice, 0);
+      expect(report.formattedCustomerPrice, '—');
 
       print('\n  Cost Report:');
       for (final l in report.lines) {
