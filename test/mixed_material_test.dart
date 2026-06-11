@@ -254,5 +254,99 @@ void main() {
         print('  Plaka ${i + 1}: ${sheets[i].material} — ${sheets[i].partCount} parca');
       }
     });
+
+    // ─── Manual test scenario: Suntalam Antrasit + Akrilik Beyaz ──────────
+    test('Manual scenario: Suntalam Antrasit govde + Akrilik Beyaz kapak (A2+A3+U2)', () {
+      final mat = MaterialSpec(
+        bodyMaterial: MalzemeTip.suntalam,
+        bodyColor: 'Antrasit',
+        doorMaterial: MalzemeTip.akrilik,
+        doorColor: 'Beyaz',
+        edgeBand: const EdgeBandSpec(thicknessMm: 2),
+      );
+
+      final modules = [
+        Module(code: ModuleCode.a2, xPosMm: 0, widthMm: 800, heightMm: 740, depthMm: 560,
+            params: const ModuleParams(rafSayisi: 1, gorunurYan: true)),
+        Module(code: ModuleCode.a3, xPosMm: 800, widthMm: 600, heightMm: 740, depthMm: 560,
+            params: const ModuleParams(cekmeceSayisi: 3, rafSayisi: 0)),
+        Module(code: ModuleCode.u2, xPosMm: 0, widthMm: 800, heightMm: 720, depthMm: 320,
+            params: const ModuleParams(rafSayisi: 2)),
+      ];
+
+      final allParts = <Part>[];
+      for (final mod in modules) {
+        allParts.addAll(engine.generateParts(mod, mat));
+      }
+
+      final optimizer = CutOptimizer();
+      final sheets = optimizer.optimize(allParts);
+      final sheetMats = sheets.map((s) => s.material).toSet();
+
+      // Verify material names in parts
+      final govdeParts = allParts.where((p) => p.role == 'govde');
+      final kapakParts = allParts.where((p) => p.role == 'kapak');
+      final arkalikParts = allParts.where((p) => p.role == 'arkalik');
+
+      for (final p in govdeParts) {
+        expect(p.material, 'Suntalam 18mm Antrasit');
+      }
+      for (final p in kapakParts) {
+        expect(p.material, 'Akrilik 18mm Beyaz');
+      }
+
+      // Verify sheet materials
+      expect(sheetMats.contains('Suntalam 18mm Antrasit'), true,
+          reason: 'Suntalam govde sheet group missing');
+      expect(sheetMats.contains('Akrilik 18mm Beyaz'), true,
+          reason: 'Akrilik kapak sheet group missing');
+      expect(sheetMats.contains('Arkalik 8mm'), true,
+          reason: 'Arkalik sheet group missing');
+
+      // Cost report
+      final calc = CostCalculator();
+      final report = calc.calculate(
+        allParts: allParts, sheets: sheets, hardware: {},
+        bodyMaterial: 'Suntalam', bodyColor: 'Antrasit',
+        doorMaterial: 'Akrilik', doorColor: 'Beyaz',
+        countertopType: 'Tezgah laminant',
+        countertopLengthMtul: 3.0,
+      );
+
+      final plateLines = report.lines.where((l) => l.unit == 'plaka').toList();
+
+      // Check Suntalam plate price (1500 TL)
+      final suntalamLine = plateLines.firstWhere((l) => l.item.contains('Suntalam'));
+      expect(suntalamLine.unitPrice, 1500,
+          reason: 'Suntalam should be 1500 TL, got ${suntalamLine.unitPrice}');
+
+      // Check Akrilik plate price (3800 TL)
+      final akrilikLine = plateLines.firstWhere((l) => l.item.contains('Akrilik'));
+      expect(akrilikLine.unitPrice, 3800,
+          reason: 'Akrilik should be 3800 TL, got ${akrilikLine.unitPrice}');
+
+      // Print full report
+      print('\n  === MANUEL SENARYO: Suntalam Antrasit + Akrilik Beyaz ===');
+      print('  Moduller: A2(800) + A3(600,3cek) + U2(800)');
+      print('');
+      print('  PLAKA GRUPLARI:');
+      for (final s in sheets) {
+        print('  ${s.material}: ${s.partCount} parca, %${s.wastePct.toStringAsFixed(1)} fire');
+      }
+      print('');
+      print('  KESIM LISTESI (ilk 5):');
+      var count = 0;
+      for (final p in allParts) {
+        if (count >= 5) break;
+        print('  ${p.moduleId} | ${p.name} | ${p.cutWidthMm.toInt()}×${p.cutLengthMm.toInt()} | ${p.material}');
+        count++;
+      }
+      print('');
+      print('  MALIYET (plaka satirlari):');
+      for (final l in plateLines) {
+        print('  ${l.item}: ${l.qty.toInt()} plaka × ${l.unitPrice.toInt()} TL = ${l.total.toInt()} TL');
+      }
+      print('  Teklif Fiyati: ${report.formattedCustomerPrice}');
+    });
   });
 }

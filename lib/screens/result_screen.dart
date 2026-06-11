@@ -51,6 +51,15 @@ class _ResultScreenState extends State<ResultScreen> {
     final engine = ModuleEngine();
     final optimizer = CutOptimizer();
 
+    // Build MaterialSpec from wizard selections
+    final mat = MaterialSpec(
+      bodyMaterial: _parseMalzeme(widget.govdeMalzeme),
+      bodyColor: widget.govdeRenk,
+      doorMaterial: _parseMalzeme(widget.altKapakMalzeme),
+      doorColor: widget.altKapakRenk,
+      edgeBand: const EdgeBandSpec(thicknessMm: 2),
+    );
+
     final placement = PlacementEngine.placeLower(PlacementInput(
         wallLengthMm: widget.wallLengthMm, isLower: true));
     final ustPlacement = PlacementEngine.placeUpper(PlacementInput(
@@ -60,11 +69,11 @@ class _ResultScreenState extends State<ResultScreen> {
     for (final m in placement.modules) {
       _allParts.addAll(engine.generateParts(m.toModule(740, 560, params: ModuleParams(
           rafSayisi: m.code == ModuleCode.a3 ? 0 : 1,
-          cekmeceSayisi: m.code == ModuleCode.a3 ? widget.cekmeceSayisi : 0)), MaterialSpec()));
+          cekmeceSayisi: m.code == ModuleCode.a3 ? widget.cekmeceSayisi : 0)), mat));
     }
     for (final m in ustPlacement.modules) {
       _allParts.addAll(engine.generateParts(m.toModule(720, 320, params: ModuleParams(
-          rafSayisi: 2, camli: widget.camli)), MaterialSpec()));
+          rafSayisi: 2, camli: widget.camli)), mat));
     }
 
     _hardware = {};
@@ -111,6 +120,14 @@ class _ResultScreenState extends State<ResultScreen> {
       _mesaj('Excel kaydedildi: ${file.path}');
     } catch (e) { _mesaj('Excel hatasi: $e', true); }
   }
+
+  /// Parse Turkish material display name to enum.
+  static MalzemeTip _parseMalzeme(String name) => switch (name) {
+    'MDFlam' => MalzemeTip.mdflam, 'Suntalam' => MalzemeTip.suntalam,
+    'MDF' => MalzemeTip.mdf, 'High Gloss' => MalzemeTip.highGloss,
+    'Membran' => MalzemeTip.membran, 'Akrilik' => MalzemeTip.akrilik,
+    _ => MalzemeTip.mdflam,
+  };
 
   void _mesaj(String msg, [bool err = false]) {
     if (!mounted) return;
