@@ -54,12 +54,12 @@ A1 alt-tek kapak · A2 alt-çift kapak · A3 alt-çekmeceli(2/3/4) · A4 evye ·
 
 ## Geliştirme Fazları
 
-- [ ] **F0:** Flutter Windows iskeleti, SQLite şema, modül motoru çekirdeği + 14 modülün formül testleri.
-- [ ] **F1:** Müşteri/proje CRUD, foto + kroki yükleme (QR ile telefondan aktarım köprüsü), kroki→ölçü okuma + onay ekranı, malzeme/renk sihirbazı.
-- [ ] **F2:** Otomatik modül yerleşimi (duvar uzunluğu → modül dizilimi; evye/ocak/buzdolabı konumları kullanıcı işaretli), AI render entegrasyonu, sesli+yazılı revizyon döngüsü, sürüm geçmişi, WhatsApp paylaşım.
-- [ ] **F3:** Kesim optimizasyon motoru, bantlama metrajı, PDF/Excel raporlar (etiketli plaka şemaları).
-- [ ] **F4:** Fiyat DB + web admin + senkron, maliyet raporu, kâr marjı, müşteri teklif PDF'i.
-- [ ] **F5:** Lisans/abonelik, MSIX kurulum paketi, ayarlar (kerf, arkalık tipi, varsayılan ölçüler), pilot geri bildirim düzeltmeleri.
+- [x] **F0:** Flutter Windows iskeleti, SQLite şema, modül motoru çekirdeği + 14 modülün formül testleri. ✅
+- [x] **F1:** Müşteri/proje CRUD, foto + kroki yükleme (QR ile telefondan aktarım köprüsü), kroki→ölçü okuma + onay ekranı, malzeme/renk sihirbazı. ✅
+- [~] **F2:** ~~Otomatik modül yerleşimi (duvar uzunluğu → modül dizilimi; evye/ocak/buzdolabı konumları kullanıcı işaretli)~~ ✅, ~~sürüm geçmişi~~ ✅, ~~WhatsApp paylaşım~~ ✅, **AI render entegrasyonu** ⚠️, **sesli+yazılı revizyon döngüsü** ⚠️
+- [x] **F3:** Kesim optimizasyon motoru, bantlama metrajı, PDF/Excel raporlar (etiketli plaka şemaları). ✅
+- [x] **F4:** Fiyat DB + web admin + senkron, maliyet raporu, kâr marjı, müşteri teklif PDF'i. ✅
+- [x] **F5:** Lisans/abonelik, MSIX kurulum paketi, ayarlar (kerf, arkalık tipi, varsayılan ölçüler), pilot geri bildirim düzeltmeleri. ✅
 
 ## Kabul Kriterleri
 
