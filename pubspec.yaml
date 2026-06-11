@@ -42,6 +42,9 @@ dependencies:
   # HTTP
   http: ^1.2.2
 
+  # Crypto (license validation)
+  crypto: ^3.0.7
+
   # UUID
   uuid: ^4.5.1
 

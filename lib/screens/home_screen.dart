@@ -7,6 +7,7 @@ import '../database/database.dart';
 import '../providers/database_provider.dart';
 import 'customer_form_screen.dart';
 import 'wizard_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -17,16 +18,26 @@ class HomeScreen extends ConsumerWidget {
     final projects = _loadProjects(db);
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Usta Yardimcisi'),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, size: 28),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Başlık
-              Text('Usta Yardımcısı', style: Theme.of(context).textTheme.headlineLarge),
-              const SizedBox(height: 8),
-              Text('Projeleriniz', style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              // Alt başlık
+              Text('Projeleriniz', style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: Colors.grey[600],
                   )),
               const SizedBox(height: 24),

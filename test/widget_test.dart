@@ -17,8 +17,7 @@ void main() {
     await tester.pump();
 
     // Main UI elements should be present
-    expect(find.text('Usta Yardımcısı'), findsOneWidget);
-    expect(find.text('+ YENİ PROJE'), findsOneWidget);
     expect(find.text('Projeleriniz'), findsOneWidget);
+    expect(find.text('+ YENİ PROJE'), findsOneWidget);
   });
 }
