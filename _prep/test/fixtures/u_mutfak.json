@@ -1,0 +1,43 @@
+{
+  "name": "U Mutfak Boy Dolaplı",
+  "description": "U şeklinde mutfak: alt + üst + boy dolap + buzdolabı boşluğu",
+  "wall_1_length_mm": 3000,
+  "wall_2_length_mm": 2200,
+  "wall_3_length_mm": 2400,
+  "ceiling_height_mm": 2700,
+  "material": {
+    "body_material": "mdflam",
+    "body_color": "Antrasit",
+    "door_material": "high_gloss",
+    "door_color": "Antrasit Parlak",
+    "edge_band_thickness_mm": 2,
+    "thickness_mm": 18,
+    "panel_size": "2100x2800"
+  },
+  "modules": [
+    {"code": "A2", "x_mm": 0, "width_mm": 600, "height_mm": 740, "depth_mm": 560, "params": {"rafSayisi": 1}},
+    {"code": "A4", "x_mm": 600, "width_mm": 800, "height_mm": 740, "depth_mm": 560, "params": {"rafSayisi": 0}},
+    {"code": "A3", "x_mm": 1400, "width_mm": 600, "height_mm": 740, "depth_mm": 560, "params": {"cekmeceSayisi": 4, "rafSayisi": 0}},
+    {"code": "A2", "x_mm": 2000, "width_mm": 400, "height_mm": 740, "depth_mm": 560, "params": {"gorunurYan": true, "rafSayisi": 1}},
+    {"code": "A2", "x_mm": 0, "width_mm": 600, "height_mm": 740, "depth_mm": 560, "params": {"rafSayisi": 1}},
+    {"code": "A5", "x_mm": 600, "width_mm": 600, "height_mm": 740, "depth_mm": 560, "params": {}},
+    {"code": "B2", "x_mm": 0, "width_mm": 800, "height_mm": 2080, "depth_mm": 560, "params": {"gorunurYan": true}},
+    {"code": "B1", "x_mm": 800, "width_mm": 600, "height_mm": 2080, "depth_mm": 560, "params": {"rafSayisi": 4}},
+    {"code": "A6", "x_mm": 1400, "width_mm": 450, "height_mm": 740, "depth_mm": 560, "params": {"gorunurYan": true}},
+    {"code": "U1", "x_mm": 0, "width_mm": 400, "height_mm": 720, "depth_mm": 320, "params": {"rafSayisi": 2}},
+    {"code": "U2", "x_mm": 400, "width_mm": 800, "height_mm": 720, "depth_mm": 320, "params": {"rafSayisi": 2}},
+    {"code": "U4", "x_mm": 0, "width_mm": 600, "height_mm": 380, "depth_mm": 320, "params": {}},
+    {"code": "U2", "x_mm": 0, "width_mm": 800, "height_mm": 720, "depth_mm": 320, "params": {"rafSayisi": 2}}
+  ],
+  "expected_checks": {
+    "total_part_count_range": [70, 120],
+    "total_plates_18mm_range": [5, 8],
+    "total_plates_8mm_range": [2, 3]
+  },
+  "expected_hardware": {
+    "menteşe_min": 16,
+    "kulplar": 14,
+    "ray_cift": 4,
+    "aski_takimi": 3
+  }
+}
