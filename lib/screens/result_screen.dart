@@ -7,6 +7,7 @@ import '../models/project.dart';
 import '../modules/module_engine.dart';
 import '../modules/placement_engine.dart';
 import '../modules/cut_optimizer.dart';
+import '../modules/cut_optimizer.dart';
 import '../services/report_service.dart';
 import '../services/siparis_formu.dart';
 import '../services/cost_service.dart' as cost;
@@ -24,6 +25,8 @@ class ResultScreen extends ConsumerStatefulWidget {
   final PlateSize govdePlateSize;
   final PlateSize kapakPlateSize;
   final PlateSize arkalikPlateSize;
+  final List<PlacedModule>? altModulesOverride; // wizard'dan gelen duzenlenmis liste
+  final List<PlacedModule>? ustModulesOverride;
 
   const ResultScreen({
     super.key, required this.wallLengthMm,
@@ -36,6 +39,8 @@ class ResultScreen extends ConsumerStatefulWidget {
     this.govdePlateSize = PlateSize.std2100x2800,
     this.kapakPlateSize = PlateSize.std2100x2800,
     this.arkalikPlateSize = PlateSize.std2100x2800,
+    this.altModulesOverride,
+    this.ustModulesOverride,
   });
 
   @override
@@ -96,14 +101,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       },
     ));
 
-    final placement = PlacementEngine.placeLower(PlacementInput(
-        wallLengthMm: widget.wallLengthMm, isLower: true));
-    final ustPlacement = PlacementEngine.placeUpper(PlacementInput(
-        wallLengthMm: widget.wallLengthMm, isLower: false));
+    // Use wizard-edited modules if provided, otherwise auto-place
+    final altMods = widget.altModulesOverride ??
+        PlacementEngine.placeLower(PlacementInput(wallLengthMm: widget.wallLengthMm, isLower: true)).modules;
+    final ustMods = widget.ustModulesOverride ??
+        PlacementEngine.placeUpper(PlacementInput(wallLengthMm: widget.wallLengthMm, isLower: false)).modules;
 
     _allParts = [];
     final modCounts = <String, int>{};
-    for (final m in placement.modules) {
+    for (final m in altMods) {
       final code = m.code.name.toUpperCase();
       modCounts[code] = (modCounts[code] ?? 0) + 1;
       final instanceMod = m.toModule(740, 560, params: ModuleParams(
@@ -121,7 +127,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       )).toList();
       _allParts.addAll(parts);
     }
-    for (final m in ustPlacement.modules) {
+    for (final m in ustMods) {
       final code = m.code.name.toUpperCase();
       modCounts[code] = (modCounts[code] ?? 0) + 1;
       final instanceMod = m.toModule(720, 320, params: ModuleParams(
@@ -139,7 +145,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     }
 
     _hardware = {};
-    for (final m in [...placement.modules, ...ustPlacement.modules]) {
+    for (final m in [...altMods, ...ustMods]) {
       final mod = m.toModule(m.code.name.startsWith('u') ? 720 : 740, m.code.name.startsWith('u') ? 320 : 560);
       for (final e in engine.generateHardware(mod).entries) {
         _hardware[e.key] = (_hardware[e.key] ?? 0) + e.value;

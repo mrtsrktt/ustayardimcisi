@@ -55,6 +55,10 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
   final _ocakCtrl = TextEditingController();
   final _buzdolabiCtrl = TextEditingController();
 
+  // Duzenlenebilir modul listesi
+  List<PlacedModule> _altModules = [];
+  List<PlacedModule> _ustModules = [];
+
   double _wallLengthMm = 3000;
   final _duvarCtrl = TextEditingController(text: '300');
 
@@ -579,13 +583,17 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
       fridgeCenterMm: (_buzdolabiCtrl.text.isEmpty ? null : (double.tryParse(_buzdolabiCtrl.text) ?? 0) * 10),
     );
 
-    // Run placement engine with anchors
-    final altResult = PlacementEngine.placeLower(PlacementInput(
-        wallLengthMm: _wallLengthMm, isLower: true, anchors: anchors));
-    final ustResult = PlacementEngine.placeUpper(PlacementInput(
-        wallLengthMm: _wallLengthMm, isLower: false, anchors: anchors));
-    final totalAlt = altResult.modules.fold<double>(0, (s, m) => s + m.widthMm);
-    final totalUst = ustResult.modules.fold<double>(0, (s, m) => s + m.widthMm);
+    // Run placement engine with anchors (only initial load)
+    if (_altModules.isEmpty) {
+      final altResult = PlacementEngine.placeLower(PlacementInput(
+          wallLengthMm: _wallLengthMm, isLower: true, anchors: anchors));
+      final ustResult = PlacementEngine.placeUpper(PlacementInput(
+          wallLengthMm: _wallLengthMm, isLower: false, anchors: anchors));
+      _altModules = altResult.modules;
+      _ustModules = ustResult.modules;
+    }
+    final totalAlt = _altModules.fold<double>(0, (s, m) => s + m.widthMm);
+    final totalUst = _ustModules.fold<double>(0, (s, m) => s + m.widthMm);
 
     return SingleChildScrollView(
       child: Column(
@@ -611,16 +619,19 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
                   final totalH = bazaH + altH + tezgahH + boslukH + ustH;
                   return Column(
                     children: [
-                      SizedBox(
-                        width: previewW, height: totalH,
-                        child: CustomPaint(
-                          painter: _DuvarOnizleme(
-                            altModules: altResult.modules,
-                            ustModules: ustResult.modules,
+                      GestureDetector(
+                        onTapDown: (d) => _onPreviewTap(d, previewW, totalH, scale),
+                        child: SizedBox(
+                          width: previewW, height: totalH,
+                          child: CustomPaint(
+                            painter: _DuvarOnizleme(
+                              altModules: _altModules,
+                              ustModules: _ustModules,
                             wallMm: _wallLengthMm,
                             scale: scale,
                             altH: altH, ustH: ustH, tezgahH: tezgahH, bazaH: bazaH, boslukH: boslukH,
                           ),
+                        ),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -692,6 +703,124 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _onPreviewTap(TapDownDetails d, double previewW, double totalH, double scale) {
+    final tx = d.localPosition.dx, ty = d.localPosition.dy;
+    const altY = 70 + 8 + 8 + 40; // ustH + tezgahH + boslukH approx...
+    // Actually need proper y calculation matching _DuvarOnizleme
+    final ustH = 70.0, tezgahH = 8.0, boslukH = 40.0, altH = 100.0;
+    final ustTop = 0.0, altTop = ustTop + ustH + boslukH + tezgahH;
+
+    // Check upper modules
+    for (var i = 0; i < _ustModules.length; i++) {
+      final m = _ustModules[i];
+      final l = m.xPosMm * scale, r = (m.xPosMm + m.widthMm) * scale;
+      if (tx >= l && tx <= r && ty >= ustTop && ty <= ustTop + ustH) {
+        _modulDuzenle(i, true); return;
+      }
+    }
+    // Check lower modules
+    for (var i = 0; i < _altModules.length; i++) {
+      final m = _altModules[i];
+      final l = m.xPosMm * scale, r = (m.xPosMm + m.widthMm) * scale;
+      if (tx >= l && tx <= r && ty >= altTop && ty <= altTop + altH) {
+        _modulDuzenle(i, false); return;
+      }
+    }
+  }
+
+  void _modulDuzenle(int index, bool isUpper) {
+    final modules = isUpper ? _ustModules : _altModules;
+    final m = modules[index];
+    final isAlt = !isUpper;
+    final codeNames = isAlt
+        ? ['A1 (Tek kapak)', 'A2 (Cift kapak)', 'A3 (Cekmeceli)', 'A4 (Evye)']
+        : ['U1 (Tek kapak)', 'U2 (Cift kapak)', 'U3 (Camli)'];
+    final codes = isAlt
+        ? [ModuleCode.a1, ModuleCode.a2, ModuleCode.a3, ModuleCode.a4]
+        : [ModuleCode.u1, ModuleCode.u2, ModuleCode.u3];
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setBs) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Modul Duzenle: ${m.code.name.toUpperCase()}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              // Genislik slider
+              Text('Genislik: ${(m.widthMm / 10).toStringAsFixed(0)} cm', style: const TextStyle(fontSize: 16)),
+              Slider(
+                value: m.widthMm, min: 300, max: 1200,
+                divisions: 18, // 5cm steps
+                label: '${(m.widthMm / 10).toStringAsFixed(0)} cm',
+                onChanged: (v) => setBs(() {
+                  final rounded = (v / 50).round() * 50.0; // 5cm steps
+                  modules[index] = PlacedModule(code: m.code, widthMm: rounded, xPosMm: m.xPosMm, isMandatory: m.isMandatory);
+                }),
+              ),
+              // Tip degistir
+              Text('Tip:', style: const TextStyle(fontSize: 16)),
+              const SizedBox(height: 4),
+              Wrap(spacing: 6, children: List.generate(codes.length, (i) => ChoiceChip(
+                label: Text(codeNames[i], style: const TextStyle(fontSize: 13)),
+                selected: m.code == codes[i],
+                onSelected: (_) => setBs(() {
+                  modules[index] = PlacedModule(code: codes[i], widthMm: m.widthMm, xPosMm: m.xPosMm, isMandatory: m.isMandatory);
+                }),
+              ))),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  // Sil
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        setState(() { modules.removeAt(index); if (isUpper) _ustModules = List.from(modules); else _altModules = List.from(modules); });
+                        Navigator.pop(ctx);
+                      },
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      label: const Text('Sil', style: TextStyle(fontSize: 16, color: Colors.red)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Araya ekle
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          final newMod = PlacedModule(code: isAlt ? ModuleCode.a1 : ModuleCode.u1, widthMm: 500, xPosMm: m.xPosMm + m.widthMm);
+                          modules.insert(index + 1, newMod);
+                          if (isUpper) _ustModules = List.from(modules); else _altModules = List.from(modules);
+                        });
+                        Navigator.pop(ctx);
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Araya Ekle', style: TextStyle(fontSize: 16)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() { if (isUpper) _ustModules = List.from(modules); else _altModules = List.from(modules); });
+                    Navigator.pop(ctx);
+                  },
+                  child: const Text('TAMAM', style: TextStyle(fontSize: 18)),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -857,6 +986,8 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
         govdePlateSize: parse(govdeEbat),
         kapakPlateSize: parse(kapakEbat),
         arkalikPlateSize: parse(arkalikEbat),
+        altModulesOverride: _altModules.isNotEmpty ? _altModules : null,
+        ustModulesOverride: _ustModules.isNotEmpty ? _ustModules : null,
         customerName: widget.customerName,
       )),
     );
