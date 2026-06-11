@@ -167,20 +167,41 @@ class PdfReportGenerator {
   }
 
   static List<List<String>> _buildCutListRows(List<Part> parts) {
+    // Group parts by material for grouped output
+    final groups = <String, List<Part>>{};
+    for (final p in parts) {
+      groups.putIfAbsent(p.material, () => []).add(p);
+    }
+    // Sort groups: govde → kapak → arkalik
+    const roleOrder = ['govde', 'kapak', 'arkalik'];
+    final sortedKeys = groups.keys.toList()
+      ..sort((a, b) => roleOrder.indexOf(groups[a]!.first.role)
+          .compareTo(roleOrder.indexOf(groups[b]!.first.role)));
+
     final rows = <List<String>>[];
     var sira = 1;
-    for (final p in parts) {
-      for (var q = 0; q < p.qty; q++) {
-        rows.add([
-          '$sira', p.moduleId, p.name, '1',
-          p.cutWidthMm.toStringAsFixed(0),
-          p.cutLengthMm.toStringAsFixed(0),
-          '${p.thicknessMm.toInt()}',
-          p.material,
-          '${p.banding[0].toInt()}/${p.banding[1].toInt()}/${p.banding[2].toInt()}/${p.banding[3].toInt()}',
-          p.label ?? '-',
-        ]);
-        sira++;
+    for (final mat in sortedKeys) {
+      final matParts = groups[mat]!;
+      final partCount = matParts.fold<int>(0, (s, p) => s + p.qty);
+      final totalM2 = matParts.fold<double>(0, (s, p) =>
+          s + (p.netWidthMm * p.netLengthMm / 1e6) * p.qty);
+      // Group header row
+      rows.add(['── $mat — $partCount parca, ${totalM2.toStringAsFixed(2)} m² ──',
+        '', '', '', '', '', '', '', '', '']);
+
+      for (final p in matParts) {
+        for (var q = 0; q < p.qty; q++) {
+          rows.add([
+            '$sira', p.moduleId, p.name, '1',
+            p.cutWidthMm.toStringAsFixed(0),
+            p.cutLengthMm.toStringAsFixed(0),
+            '${p.thicknessMm.toInt()}',
+            p.material,
+            '${p.banding[0].toInt()}/${p.banding[1].toInt()}/${p.banding[2].toInt()}/${p.banding[3].toInt()}',
+            p.label ?? '-',
+          ]);
+          sira++;
+        }
       }
     }
     return rows;
@@ -247,29 +268,53 @@ class ExcelReportGenerator {
         ..cellStyle = CellStyle(bold: true);
     }
 
-    // Data
-    var row = 1;
+    // Data — grouped by material
+    final groups = <String, List<Part>>{};
     for (final p in allParts) {
-      for (var q = 0; q < p.qty; q++) {
-        final vals = [
-          row, p.moduleId, p.name, 1,
-          p.cutWidthMm.toInt(), p.cutLengthMm.toInt(),
-          p.thicknessMm.toInt(), p.material,
-          p.banding[0].toInt(), p.banding[1].toInt(),
-          p.banding[2].toInt(), p.banding[3].toInt(),
-          p.grainLocked ? 'Evet' : 'Hayir', p.label ?? '-',
-        ];
-        for (var c = 0; c < vals.length; c++) {
-          final v = vals[c];
-          if (v is int) {
-            sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: row))
-              ..value = IntCellValue(v);
-          } else {
-            sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: row))
-              ..value = TextCellValue(v.toString());
+      groups.putIfAbsent(p.material, () => []).add(p);
+    }
+    const roleOrder = ['govde', 'kapak', 'arkalik'];
+    final sortedKeys = groups.keys.toList()
+      ..sort((a, b) => roleOrder.indexOf(groups[a]!.first.role)
+          .compareTo(roleOrder.indexOf(groups[b]!.first.role)));
+
+    var row = 1;
+    for (final mat in sortedKeys) {
+      final matParts = groups[mat]!;
+      final partCount = matParts.fold<int>(0, (s, p) => s + p.qty);
+      final totalM2 = matParts.fold<double>(0, (s, p) =>
+          s + (p.netWidthMm * p.netLengthMm / 1e6) * p.qty);
+
+      // Group header row
+      for (var c = 0; c < headers.length; c++) {
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: row))
+          ..value = TextCellValue(c == 0 ? '── $mat ($partCount parca, ${totalM2.toStringAsFixed(2)} m²)' : '')
+          ..cellStyle = CellStyle(bold: true);
+      }
+      row++;
+
+      for (final p in matParts) {
+        for (var q = 0; q < p.qty; q++) {
+          final vals = [
+            row, p.moduleId, p.name, 1,
+            p.cutWidthMm.toInt(), p.cutLengthMm.toInt(),
+            p.thicknessMm.toInt(), p.material,
+            p.banding[0].toInt(), p.banding[1].toInt(),
+            p.banding[2].toInt(), p.banding[3].toInt(),
+            p.grainLocked ? 'Evet' : 'Hayir', p.label ?? '-',
+          ];
+          for (var c = 0; c < vals.length; c++) {
+            final v = vals[c];
+            if (v is int) {
+              sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: row))
+                ..value = IntCellValue(v);
+            } else {
+              sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: row))
+                ..value = TextCellValue(v.toString());
+            }
           }
+          row++;
         }
-        row++;
       }
     }
 

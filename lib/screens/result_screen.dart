@@ -100,6 +100,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     }
 
     _sheets = optimizer.optimize(_allParts);
+    // Sort sheets: govde → kapak → arkalik
+    const roleOrder = ['govde', 'kapak', 'arkalik'];
+    _sheets.sort((a, b) {
+      final aRole = _allParts.firstWhere((p) => a.material == p.material,
+          orElse: () => _allParts.first).role;
+      final bRole = _allParts.firstWhere((p) => b.material == p.material,
+          orElse: () => _allParts.first).role;
+      return roleOrder.indexOf(aRole).compareTo(roleOrder.indexOf(bRole));
+    });
     _bandingMetraj = BandingCalculator.totalMetrajWithFire(_allParts);
 
     final calc = cost.CostCalculator();
@@ -338,9 +347,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // --- MALZEME LISTESI ---
-        Text('Malzeme Listesi', style: Theme.of(context).textTheme.titleLarge),
+        // --- KESIM LISTESI (GRUPLU) ---
+        Text('Kesim Listesi', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
+
+        // Group parts by material
+        ..._buildGroupedCutList(),
+
+        const Divider(height: 24),
 
         // Plakalar
         _section('Plakalar', Icons.grid_view, Colors.blue),
@@ -428,6 +442,74 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         const SizedBox(height: 40),
       ],
     );
+  }
+
+  /// Build cut list grouped by material (govde → kapak → arkalik).
+  List<Widget> _buildGroupedCutList() {
+    final groups = <String, List<Part>>{};
+    for (final p in _allParts) {
+      groups.putIfAbsent(p.material, () => []).add(p);
+    }
+
+    // Sort groups by role priority
+    const roleOrder = ['govde', 'kapak', 'arkalik'];
+    final sortedKeys = groups.keys.toList()
+      ..sort((a, b) {
+        final aRole = groups[a]!.first.role;
+        final bRole = groups[b]!.first.role;
+        return roleOrder.indexOf(aRole).compareTo(roleOrder.indexOf(bRole));
+      });
+
+    final widgets = <Widget>[];
+    for (final mat in sortedKeys) {
+      final parts = groups[mat]!;
+      final partCount = parts.fold<int>(0, (s, p) => s + p.qty);
+      final totalM2 = parts.fold<double>(0, (s, p) =>
+          s + (p.netWidthMm * p.netLengthMm / 1e6) * p.qty);
+
+      widgets.add(Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Material header
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _materialColor(mat, light: true),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(child: Text(mat, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                  Text('$partCount parca', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                  const SizedBox(width: 12),
+                  Text('${totalM2.toStringAsFixed(2)} m²', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                ],
+              ),
+            ),
+            // Parts in this group (compact)
+            Padding(
+              padding: const EdgeInsets.all(6),
+              child: Wrap(spacing: 4, runSpacing: 2, children: parts.map((p) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: Text('${p.name} ${p.cutWidthMm.toInt()}×${p.cutLengthMm.toInt()}',
+                      style: const TextStyle(fontSize: 10)),
+                );
+              }).toList()),
+            ),
+          ],
+        ),
+      ));
+    }
+    return widgets;
   }
 
   Widget _section(String title, IconData icon, Color color) {
