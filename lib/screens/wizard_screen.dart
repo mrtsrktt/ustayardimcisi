@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import '../database/database.dart';
 import '../providers/database_provider.dart';
+import 'result_screen.dart';
 
 class WizardScreen extends ConsumerStatefulWidget {
   final int projectId;
@@ -581,112 +582,25 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
 
   // ─── Tasarım Oluştur ────────────────────────────────────────────────────
 
-  Future<void> _tasarimOlustur() async {
-    // Loading göster
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => PopScope(
-        canPop: false,
-        child: Center(
-          child: Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            child: const Padding(
-              padding: EdgeInsets.all(40),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 20),
-                  Text('Kesim plani hazirlaniyor...', style: TextStyle(fontSize: 18)),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+  void _tasarimOlustur() {
+    final wallCm = double.tryParse(_duvarCtrl.text) ?? 300;
 
-    try {
-      final db = ref.read(databaseProvider);
-      final wallCm = double.tryParse(_duvarCtrl.text) ?? 300;
-
-      // Proje durumunu güncelle
-      await db.updateProject(ProjectRow(
-        id: widget.projectId,
-        customerId: 0, // mevcut değer korunur
-        status: 'designed',
-        measurementsJson: '{"wall_mm": ${(wallCm * 10).round()}}',
-      ));
-
-      await Future.delayed(const Duration(seconds: 1)); // simulasyon
-
-      if (!mounted) return;
-      Navigator.pop(context); // loading
-
-      // Başarılı dialog'u göster
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.green, size: 32),
-              SizedBox(width: 12),
-              Text('Tasarim Hazir!', style: TextStyle(fontSize: 22)),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _bilgiSatir('Duvar', '${wallCm.toStringAsFixed(0)} cm'),
-              _bilgiSatir('Alt Kapak', '$_altKapakMalzeme — $_altKapakRenk'),
-              _bilgiSatir('Ust Kapak', '$_ustKapakMalzeme — $_ustKapakRenk'),
-              _bilgiSatir('Govde', '$_govdeMalzeme — $_govdeRenk'),
-              _bilgiSatir('Tezgah', _tezgahTipi),
-              const SizedBox(height: 16),
-              const Text('✅ Kesim listesi olusturuldu\n✅ Bantlama metraji hesaplandi\n✅ Maliyet raporu hazir',
-                  style: TextStyle(fontSize: 15)),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // dialog
-                Navigator.pop(context); // wizard
-              },
-              child: const Text('TAMAM', style: TextStyle(fontSize: 18)),
-            ),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context); // dialog
-              },
-              icon: const Icon(Icons.edit),
-              label: const Text('Duzenle', style: TextStyle(fontSize: 18)),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context); // loading
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
-      );
-    }
-  }
-
-  Widget _bilgiSatir(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(fontSize: 15, color: Colors.grey[600])),
-          Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-        ],
-      ),
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => ResultScreen(
+        wallLengthMm: wallCm * 10,
+        govdeMalzeme: _govdeMalzeme,
+        govdeRenk: _govdeRenk,
+        altKapakMalzeme: _altKapakMalzeme,
+        altKapakRenk: _altKapakRenk,
+        ustKapakMalzeme: _ustKapakMalzeme,
+        ustKapakRenk: _ustKapakRenk,
+        tezgahTipi: _tezgahTipi,
+        cekmeceSayisi: _cekmeceSayisi,
+        camli: _camli,
+        kulpTipi: _kulpTipi,
+        customerName: widget.customerName,
+      )),
     );
   }
 }
