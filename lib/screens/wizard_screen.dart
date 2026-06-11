@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import '../database/database.dart';
 import '../providers/database_provider.dart';
+import '../modules/cut_optimizer.dart';
 import 'result_screen.dart';
 
 class WizardScreen extends ConsumerStatefulWidget {
@@ -633,6 +634,100 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
 
   void _tasarimOlustur() {
     final wallCm = double.tryParse(_duvarCtrl.text) ?? 300;
+    _ebatSecimiDialog(wallCm);
+  }
+
+  void _ebatSecimiDialog(double wallCm) {
+    // Default selections
+    String govdeEbat = '2100×2800';
+    String kapakEbat = (_altKapakMalzeme == 'High Gloss' || _altKapakMalzeme == 'Akrilik')
+        ? '1220×2800' : '2100×2800';
+    String arkalikEbat = '2100×2800';
+
+    final isKapakOzel = _altKapakMalzeme == 'High Gloss' || _altKapakMalzeme == 'Akrilik';
+    final govdeOpts = ['2100×2800', '1830×3660'];
+    final kapakOpts = isKapakOzel ? ['1220×2800', '2100×2800'] : ['2100×2800', '1830×3660'];
+    final arkalikOpts = ['2100×2800', '1830×3660'];
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) => AlertDialog(
+          title: const Text('Plaka Ebat Secimi', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Kesime baslamadan once plaka ebatlarini secin. '
+                    'Varsayilan degerler isaretli geldi.',
+                    style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+                const SizedBox(height: 20),
+
+                // Govde
+                Text('GOVDE (${_govdeMalzeme} ${_govdeRenk})',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                ...govdeOpts.map((e) => RadioListTile<String>(
+                  title: Text(e, style: const TextStyle(fontSize: 18)),
+                  value: e, groupValue: govdeEbat,
+                  onChanged: (v) => setDlg(() => govdeEbat = v!),
+                )),
+                const Divider(),
+
+                // Kapak
+                Text('KAPAK (${_altKapakMalzeme} ${_altKapakRenk})',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                if (isKapakOzel) Text('Piyasa standardi: 1220×2800',
+                    style: TextStyle(fontSize: 14, color: Colors.orange[700])),
+                const SizedBox(height: 8),
+                ...kapakOpts.map((e) => RadioListTile<String>(
+                  title: Text(e, style: const TextStyle(fontSize: 18)),
+                  value: e, groupValue: kapakEbat,
+                  onChanged: (v) => setDlg(() => kapakEbat = v!),
+                )),
+                const Divider(),
+
+                // Arkalik
+                Text('ARKALIK',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                ...arkalikOpts.map((e) => RadioListTile<String>(
+                  title: Text(e, style: const TextStyle(fontSize: 18)),
+                  value: e, groupValue: arkalikEbat,
+                  onChanged: (v) => setDlg(() => arkalikEbat = v!),
+                )),
+              ],
+            ),
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _goToResult(wallCm, govdeEbat, kapakEbat, arkalikEbat);
+                },
+                child: const Text('DEVAM — Kesimi Hesapla', style: TextStyle(fontSize: 20)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _goToResult(double wallCm, String govdeEbat, String kapakEbat, String arkalikEbat) {
+    // Parse ebat strings to PlateSize
+    PlateSize parse(String s) {
+      final parts = s.split('×');
+      return PlateSize(
+        widthMm: double.parse(parts[0]),
+        lengthMm: double.parse(parts[1]),
+      );
+    }
 
     Navigator.pushReplacement(
       context,
@@ -648,6 +743,9 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
         camli: _camli,
         kulpTipi: _kulpTipi,
         arkalikKalinlik: _arkalikKalinlik,
+        govdePlateSize: parse(govdeEbat),
+        kapakPlateSize: parse(kapakEbat),
+        arkalikPlateSize: parse(arkalikEbat),
         customerName: widget.customerName,
       )),
     );

@@ -20,6 +20,9 @@ class ResultScreen extends ConsumerStatefulWidget {
   final int cekmeceSayisi;
   final bool camli;
   final double arkalikKalinlik;
+  final PlateSize govdePlateSize;
+  final PlateSize kapakPlateSize;
+  final PlateSize arkalikPlateSize;
 
   const ResultScreen({
     super.key, required this.wallLengthMm,
@@ -29,6 +32,9 @@ class ResultScreen extends ConsumerStatefulWidget {
     required this.kulpTipi, required this.customerName,
     required this.cekmeceSayisi, required this.camli,
     this.arkalikKalinlik = 8,
+    this.govdePlateSize = PlateSize.std2100x2800,
+    this.kapakPlateSize = PlateSize.std2100x2800,
+    this.arkalikPlateSize = PlateSize.std2100x2800,
   });
 
   @override
@@ -77,19 +83,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       arkalikThicknessMm: widget.arkalikKalinlik,
     );
 
-    // Material-specific plate sizes (Madde 2: zorunlu ebat secimi)
-    final isKapakHG = widget.altKapakMalzeme == 'High Gloss' || widget.altKapakMalzeme == 'Akrilik';
-    final govdeSize = cutConfig.materialSizes['govde'] ?? PlateSize.std2100x2800;
-    final kapakSize = isKapakHG ? PlateSize.std1220x2800 : (cutConfig.materialSizes['kapak'] ?? PlateSize.std2100x2800);
-    final arkalikSize = cutConfig.materialSizes['arkalik'] ?? PlateSize.std2100x2800;
-
+    // Plate sizes from wizard dialog selection
     final optimizer = CutOptimizer(config: CutConfig(
       kerfMm: cutConfig.kerfMm,
       trimMm: cutConfig.trimMm,
       materialSizes: {
-        'govde': govdeSize,
-        'kapak': kapakSize,
-        'arkalik': arkalikSize,
+        'govde': widget.govdePlateSize,
+        'kapak': widget.kapakPlateSize,
+        'arkalik': widget.arkalikPlateSize,
       },
     ));
 
