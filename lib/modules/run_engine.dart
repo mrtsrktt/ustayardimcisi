@@ -38,7 +38,7 @@ class RunEngine {
           netWidth: dolguMm,
           netLength: altY,
           thickness: ModuleDefaults.t,
-          material: 'Kapak',
+          materialFull: 'High Gloss 18mm Beyaz', role: 'kapak',
           banding: [1, 0, 0, 0],
         ));
       }
@@ -62,7 +62,7 @@ class RunEngine {
           netWidth: parcaBoy,
           netLength: ModuleDefaults.bazaH,
           thickness: ModuleDefaults.t,
-          material: 'Kapak',
+          materialFull: 'High Gloss 18mm Beyaz', role: 'kapak',
           banding: [1, 1, 0, 0],  // alt+üst kenar bant (zemin koruması)
         ));
         kalan -= parcaBoy;
@@ -96,7 +96,7 @@ class RunEngine {
           netWidth: dolguMm,
           netLength: ustY,
           thickness: ModuleDefaults.t,
-          material: 'Kapak',
+          materialFull: 'High Gloss 18mm Beyaz', role: 'kapak',
           banding: [1, 0, 0, 0],
         ));
       }

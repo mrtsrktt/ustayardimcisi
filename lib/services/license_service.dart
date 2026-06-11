@@ -63,7 +63,7 @@ class LicenseService {
       final lastCheckStr = settings['license_last_check'];
 
       if (key == null || key.isEmpty) {
-        return _cache(const LicenseInfo(
+        return _cache(LicenseInfo(
           status: LicenseStatus.trial,
           daysRemaining: _trialDaysRemaining(settings),
         ));

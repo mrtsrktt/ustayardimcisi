@@ -39,11 +39,11 @@ class OfferPdfGenerator {
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
             pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-              pw.Text('Musteri:', style: const pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              pw.Text('Musteri:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
               pw.Text(customerName),
             ]),
             pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-              pw.Text('Tarih:', style: const pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              pw.Text('Tarih:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
               pw.Text(DateTime.now().toString().substring(0, 10)),
             ]),
           ],
