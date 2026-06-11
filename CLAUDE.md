@@ -84,3 +84,4 @@ A1 alt-tek kapak · A2 alt-çift kapak · A3 alt-çekmeceli(2/3/4) · A4 evye ·
 - **PriceSyncService remote senkron TODO.** `cost_service.dart:PriceSyncService.syncFromRemote()` gövdesi boş. Varsayılan fiyatlar (`DefaultPrices`) çevrimdışı ç wake.
 - **AI servisleri stub durumunda.** API anahtarı olmadan `StubImageGenService` / `StubSketchReaderService` kullanılıyor. Gemini implementasyonları yazıldı ama test edilmedi.
 - **Windows Developer Mode** gerekiyor (Flutter Windows build için symlink desteği).
+- **Sipariş formu formatı:** Furkan Orman Ürünleri sipariş formu referans alınarak tasarlandı; ölçüler cm, malzeme başına ayrı sayfa, aynı ölçü+bant kombinasyonu konsolide tek satır. Bant gösterimi B|B|E|E 4 sabit kutucuk (X=bantlı, .=bantsız).
