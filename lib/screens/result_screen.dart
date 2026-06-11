@@ -16,7 +16,7 @@ class ResultScreen extends ConsumerStatefulWidget {
   final String govdeMalzeme, govdeRenk;
   final String altKapakMalzeme, altKapakRenk;
   final String ustKapakMalzeme, ustKapakRenk;
-  final String tezgahTipi, kulpTipi, customerName;
+  final String kulpTipi, customerName;
   final int cekmeceSayisi;
   final bool camli;
   final double arkalikKalinlik;
@@ -26,7 +26,7 @@ class ResultScreen extends ConsumerStatefulWidget {
     required this.govdeMalzeme, required this.govdeRenk,
     required this.altKapakMalzeme, required this.altKapakRenk,
     required this.ustKapakMalzeme, required this.ustKapakRenk,
-    required this.tezgahTipi, required this.kulpTipi, required this.customerName,
+    required this.kulpTipi, required this.customerName,
     required this.cekmeceSayisi, required this.camli,
     this.arkalikKalinlik = 8,
   });
@@ -117,8 +117,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       bodyMaterial: widget.govdeMalzeme, bodyColor: widget.govdeRenk,
       doorMaterial: widget.altKapakMalzeme, doorColor: widget.altKapakRenk,
       edgeBandThickness: 2,
-      countertopType: 'Tezgah ${widget.tezgahTipi.toLowerCase()}',
-      countertopLengthMtul: widget.wallLengthMm / 1000,
+      // Tezgah kaldirildi
     );
   }
 
@@ -389,14 +388,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           dense: true, title: Text(e.key, style: const TextStyle(fontSize: 15)),
           trailing: Text('${e.value} adet', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
         )),
-        const Divider(height: 24),
-
-        // Tezgah
-        _section('Tezgah', Icons.table_bar, Colors.brown),
-        ListTile(dense: true,
-          title: Text('Tezgah ${widget.tezgahTipi}', style: const TextStyle(fontSize: 15)),
-          trailing: Text('${(widget.wallLengthMm / 1000).toStringAsFixed(1)} mtul', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-        ),
         const Divider(height: 24),
 
         // --- MALIYET DETAYI ---

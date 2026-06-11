@@ -201,7 +201,7 @@ void main() {
       final calc = cost.CostCalculator();
       final report3 = calc.calculate(allParts: parts3, sheets: sheets3, hardware: {},
         bodyMaterial: 'MDFlam', bodyColor: 'Beyaz', doorMaterial: 'MDFlam', doorColor: 'Beyaz',
-        countertopType: 'Tezgah laminant', countertopLengthMtul: 1.0);
+        );
       final arkalikLine3 = report3.lines.firstWhere((l) => l.item.contains('Arkalik'));
 
       // 8mm scenario
@@ -209,7 +209,7 @@ void main() {
       final sheets8 = optimizer.optimize(parts8);
       final report8 = calc.calculate(allParts: parts8, sheets: sheets8, hardware: {},
         bodyMaterial: 'MDFlam', bodyColor: 'Beyaz', doorMaterial: 'MDFlam', doorColor: 'Beyaz',
-        countertopType: 'Tezgah laminant', countertopLengthMtul: 1.0);
+        );
       final arkalikLine8 = report8.lines.firstWhere((l) => l.item.contains('Arkalik'));
 
       expect(arkalikLine3.unitPrice, 350, reason: 'Arkalik 3mm = 350 TL');
@@ -326,7 +326,7 @@ void main() {
         allParts: parts, sheets: sheets, hardware: {},
         bodyMaterial: 'MDFlam', bodyColor: 'Beyaz',
         doorMaterial: 'MDFlam', doorColor: 'Beyaz',
-        countertopType: 'Tezgah laminant', countertopLengthMtul: 1.0);
+        );
 
       final cutLine = report.lines.firstWhere((l) => l.item == 'Kesim ucreti');
       expect(cutLine.qty.toInt(), sheets.length);
@@ -350,7 +350,7 @@ void main() {
         allParts: parts, sheets: sheets, hardware: {},
         bodyMaterial: 'MDFlam', bodyColor: 'Beyaz',
         doorMaterial: 'MDFlam', doorColor: 'Beyaz',
-        countertopType: 'Tezgah laminant', countertopLengthMtul: 1.0);
+        );
 
       // Find bantlama isciligi lines
       final iscilikLines = report.lines.where((l) => l.item.contains('Bantlama isciligi')).toList();
@@ -389,7 +389,7 @@ void main() {
         allParts: parts, sheets: sheets, hardware: {},
         bodyMaterial: 'MDFlam', bodyColor: 'Beyaz',
         doorMaterial: 'MDFlam', doorColor: 'Beyaz',
-        countertopType: 'Tezgah laminant', countertopLengthMtul: 1.0);
+        );
 
       final iscilikLines = report.lines.where((l) => l.item.contains('Bantlama isciligi')).toList();
       final has04 = iscilikLines.any((l) => l.item.contains('0.4mm'));

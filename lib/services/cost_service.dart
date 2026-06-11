@@ -92,17 +92,6 @@ class DefaultPrices {
     'Raf pimi (4 adet)': 15,
   };
 
-  // Countertops (per mtul)
-  static const Map<String, double> countertops = {
-    'Tezgah laminant': 550,
-    'Tezgah akrilik': 1200,
-    'Tezgah granit': 1800,
-    'Tezgah kompakt': 950,
-    'Tezgah Corian': 2500,
-    'Supurgelik laminant': 120,
-    'Supurgelik akrilik': 250,
-  };
-
   // Glass
   static const double camM2 = 750;       // cam m²
   static const double camProfilMtul = 180; // aluminyum profil mtül
@@ -260,8 +249,6 @@ class CostCalculator {
     required String doorMaterial,
     required String doorColor,
     double edgeBandThickness = 2,
-    String countertopType = 'Tezgah laminant',
-    double countertopLengthMtul = 3.0,
     bool hasGlassCabinet = false,
     int glassDoorCount = 0,
     double glassDoorWidth = 500,
@@ -328,16 +315,7 @@ class CostCalculator {
       ));
     }
 
-    // 4. Countertop
-    lines.add(CostLine(
-      item: countertopType,
-      qty: countertopLengthMtul,
-      unit: 'mtul',
-      unitPrice: DefaultPrices.countertops[countertopType] ?? 550,
-      total: (DefaultPrices.countertops[countertopType] ?? 550) * countertopLengthMtul,
-    ));
-
-    // 5. Glass (if any)
+    // 4. Glass (if any)
     if (hasGlassCabinet && glassDoorCount > 0) {
       final camArea = (glassDoorWidth * glassDoorHeight / 1000000) * glassDoorCount; // mm² → m²
       lines.add(CostLine(

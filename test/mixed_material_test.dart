@@ -121,8 +121,7 @@ void main() {
         doorMaterial: 'High Gloss',
         doorColor: 'Antrasit',
         edgeBandThickness: 2,
-        countertopType: 'Tezgah laminant',
-        countertopLengthMtul: 2.0,
+        // countertop removed
       );
 
       // Find plate cost lines
@@ -309,8 +308,7 @@ void main() {
         allParts: allParts, sheets: sheets, hardware: {},
         bodyMaterial: 'Suntalam', bodyColor: 'Antrasit',
         doorMaterial: 'Akrilik', doorColor: 'Beyaz',
-        countertopType: 'Tezgah laminant',
-        countertopLengthMtul: 3.0,
+        // countertop removed
       );
 
       final plateLines = report.lines.where((l) => l.unit == 'plaka').toList();

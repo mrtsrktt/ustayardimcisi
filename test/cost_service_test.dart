@@ -60,8 +60,7 @@ void main() {
         doorMaterial: 'High Gloss',
         doorColor: 'Beyaz',
         edgeBandThickness: 2,
-        countertopType: 'Tezgah laminant',
-        countertopLengthMtul: 2.5,
+        // countertop removed
       );
 
       expect(report.lines.isNotEmpty, true);
@@ -93,8 +92,7 @@ void main() {
         allParts: parts, sheets: sheets, hardware: hw,
         bodyMaterial: 'MDFlam', bodyColor: 'Beyaz',
         doorMaterial: 'Membran', doorColor: 'Krem',
-        countertopType: 'Tezgah kompakt',
-        countertopLengthMtul: 3.0,
+        // countertop removed
       );
 
       final withMargin = report.withMargin(30); // 30% margin
@@ -106,7 +104,7 @@ void main() {
       expect(DefaultPrices.plates.isNotEmpty, true);
       expect(DefaultPrices.banding.isNotEmpty, true);
       expect(DefaultPrices.hardware.isNotEmpty, true);
-      expect(DefaultPrices.countertops.isNotEmpty, true);
+      expect(DefaultPrices.plates.isNotEmpty, true);
     });
 
     test('Banding price lookup', () {

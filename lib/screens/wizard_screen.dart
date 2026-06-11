@@ -43,7 +43,6 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
   int _cekmeceSayisi = 3;
   bool _camli = false;
   String _kulpTipi = 'Modern';
-  String _tezgahTipi = 'Laminant';
   double _arkalikKalinlik = 8; // 3 veya 8 mm
   double _govdeBant = 1;   // Govde bant kalinligi (0.4 / 1 / 2)
   double _kapakBant = 2;   // Kapak bant kalinligi (0.4 / 1 / 2)
@@ -499,24 +498,6 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
             _bantKart('2 mm', 2, _kapakBant, (v) => setState(() => _kapakBant = v)),
           ]),
           const SizedBox(height: 16),
-
-          Text('Tezgah', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 10),
-          Wrap(spacing: 8, children: ['Laminant', 'Akrilik', 'Kompakt', 'Granit', 'Corian'].map((t) {
-            final sel = _tezgahTipi == t;
-            return GestureDetector(
-              onTap: () => setState(() => _tezgahTipi = t),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: sel ? Colors.blue : Colors.grey[300]!, width: sel ? 3 : 1),
-                  color: sel ? Colors.blue.withAlpha(20) : null,
-                ),
-                child: Text(t, style: TextStyle(fontSize: 16, fontWeight: sel ? FontWeight.bold : FontWeight.normal)),
-              ),
-            );
-          }).toList()),
           const SizedBox(height: 24),
 
           Text('Kulp Tipi', style: Theme.of(context).textTheme.titleMedium),
@@ -571,7 +552,6 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
                   _ozet('Govde', '$_govdeMalzeme — $_govdeRenk'),
                   _ozet('Alt Kapak', '$_altKapakMalzeme — $_altKapakRenk'),
                   _ozet('Ust Kapak', '$_ustKapakMalzeme — $_ustKapakRenk'),
-                  _ozet('Tezgah', _tezgahTipi),
                   _ozet('Cekmece', '$_cekmeceSayisi adet'),
                   _ozet('Camli', _camli ? 'Evet' : 'Hayir'),
                   _ozet('Kulp', _kulpTipi),
@@ -664,7 +644,6 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
         altKapakRenk: _altKapakRenk,
         ustKapakMalzeme: _ustKapakMalzeme,
         ustKapakRenk: _ustKapakRenk,
-        tezgahTipi: _tezgahTipi,
         cekmeceSayisi: _cekmeceSayisi,
         camli: _camli,
         kulpTipi: _kulpTipi,
