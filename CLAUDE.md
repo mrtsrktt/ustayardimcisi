@@ -76,3 +76,11 @@ A1 alt-tek kapak · A2 alt-çift kapak · A3 alt-çekmeceli(2/3/4) · A4 evye ·
 - MVP'de CNC GKod çıkışı YOK (F6+ aday). Banyo/yatak odası modülleri F6+ aday.
 - AI'dan gelen hiçbir sayıyı onaysız plana yazma.
 - İngilizce/teknik jargon UI metni yazma.
+
+## Bilinen Eksikler (2026-06-11 itibariyle)
+
+- **Alt/üst/baza yükseklik ayarları motora bağlı değil.** `ModuleDefaults` (altY=740, ustY=720, bazaH=100) statik sabitler. SettingsScreen'te kaydedilen `alt_yukseklik_mm` vb. değerler `AppSettings.fromMap()` ile okunuyor ama `ModuleEngine` bu değerleri kullanmıyor — kapsamlı API değişikliği gerekiyor.
+- **useDeduction ve minSeritMm okunuyor ama motorda uygulanmıyor.** `AppSettings` üzerinde mevcut, `ModuleEngine` ve `CutOptimizer` bu alanları henüz referans almıyor.
+- **PriceSyncService remote senkron TODO.** `cost_service.dart:PriceSyncService.syncFromRemote()` gövdesi boş. Varsayılan fiyatlar (`DefaultPrices`) çevrimdışı ç wake.
+- **AI servisleri stub durumunda.** API anahtarı olmadan `StubImageGenService` / `StubSketchReaderService` kullanılıyor. Gemini implementasyonları yazıldı ama test edilmedi.
+- **Windows Developer Mode** gerekiyor (Flutter Windows build için symlink desteği).
