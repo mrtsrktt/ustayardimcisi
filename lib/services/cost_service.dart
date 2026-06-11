@@ -106,10 +106,62 @@ class DefaultPrices {
   static const double montajIscilikModul = 250;
   static const double kesimIscilikSaat = 500;
 
+  /// Normalize Turkish characters for matching.
+  static String _norm(String s) =>
+      s.replaceAll('ı', 'i').replaceAll('I', 'i').replaceAll('s', 's').replaceAll('S', 'S');
+
+  /// Normalize hardware name from module_engine to cost_service price key.
+  static String _normalizeHwName(String engineName) {
+    // Map common engine names to price DB keys
+    final map = {
+      'Menteşe': 'Mentese (frenli)',
+      'Menteşe (geniş açı)': 'Mentese (genis aci 175°)',
+      'Menteşe (amortisörlü)': 'Mentese (amortisorlu)',
+      'Cam menteşesi': 'Cam mentesesi',
+      'Kulp': 'Kulp modern',
+      'Askı': 'Aski takimi',
+      'Ray (çift)': 'Ray 500mm (cift)',
+    };
+    return map[engineName] ?? engineName;
+  }
+
+  /// Find plate price from full material name (e.g. "MDFlam 18mm Beyaz").
+  static double findPlatePrice(String fullName) {
+    // Direct match
+    if (DefaultPrices.plates.containsKey(fullName)) return DefaultPrices.plates[fullName]!;
+
+    // Normalize and try matching
+    final norm = _norm(fullName);
+    for (final k in DefaultPrices.plates.keys) {
+      if (_norm(k) == norm) return DefaultPrices.plates[k]!;
+    }
+
+    // Partial match: check if the key contains the material type
+    for (final k in DefaultPrices.plates.keys) {
+      if (_norm(k).contains(_norm(fullName).substring(0, fullName.length.clamp(0, 10)).trim())) {
+        return DefaultPrices.plates[k]!;
+      }
+    }
+
+    // Fallback
+    print('WARNING: No price found for plate "$fullName", using fallback');
+    return DefaultPrices.plates['MDFlam 18mm Beyaz']!;
+  }
+
   /// Look up plate price by description.
   static double getPlatePrice(String material, String color, double thickness) {
     final key = '$material ${thickness.toInt()}mm $color';
-    return plates[key] ?? plates['MDFlam 18mm Beyaz']!;
+    if (plates.containsKey(key)) return plates[key]!;
+
+    // Try normalized version
+    final normKey = _norm(key);
+    for (final k in plates.keys) {
+      if (_norm(k) == normKey) return plates[k]!;
+    }
+
+    // Fallback with warning
+    print('WARNING: No price found for plate "$key", using MDFlam 18mm Beyaz fallback');
+    return plates['MDFlam 18mm Beyaz']!;
   }
 
   /// Look up banding price per meter.
@@ -215,20 +267,10 @@ class CostCalculator {
     // 1. Plates (from cut sheets)
     final plateCounts = MaterialCalculator.plateCounts(sheets);
     for (final entry in plateCounts.entries) {
-      final materialParts = entry.key.split('_');
-      final materialName = materialParts.isNotEmpty ? materialParts.first : '?';
-      final thickness = entry.key.contains('18mm') ? 18.0 : 8.0;
-      double price;
-      if (materialName == 'Arkalik') {
-        price = thickness == 8 ? DefaultPrices.plates['Arkalik 8mm']! : DefaultPrices.plates['Arkalik 3mm']!;
-      } else {
-        price = DefaultPrices.getPlatePrice(materialName, bodyColor, thickness);
-        if (materialName == 'Kapak') {
-          price = DefaultPrices.getPlatePrice(doorMaterial, doorColor, thickness);
-        }
-      }
+      final fullName = entry.key; // e.g. "MDFlam 18mm Beyaz" or "Arkalik 8mm"
+      double price = DefaultPrices.findPlatePrice(fullName);
       lines.add(CostLine(
-        item: '$materialName ${thickness.toInt()}mm plaka',
+        item: '$fullName plaka',
         qty: entry.value.toDouble(),
         unit: 'plaka',
         unitPrice: price,
@@ -252,21 +294,27 @@ class CostCalculator {
       ));
     }
 
-    // 3. Hardware
+    // 3. Hardware — normalize names for price matching
+    final hwPrices = <String, double>{};
     for (final entry in hardware.entries) {
-      double price = DefaultPrices.hardware[entry.key] ?? 50;
-      // Ray: use appropriate length price
-      if (entry.key.startsWith('Ray')) {
-        final parts = allParts.where((p) => p.name == 'Kutu yanı').toList();
-        if (parts.isNotEmpty) {
-          final rayBoy = HardwareCalc.rayBoy(560); // approximate
-          final rayKey = DefaultPrices.hardware.keys.firstWhere(
-              (k) => k.startsWith('Ray $rayBoy'), orElse: () => 'Ray 500mm (cift)');
-          price = DefaultPrices.hardware[rayKey] ?? 280;
+      final normName = DefaultPrices._normalizeHwName(entry.key);
+      double price = DefaultPrices.hardware[normName] ??
+          DefaultPrices.hardware[entry.key] ?? 50;
+
+      // Try fuzzy match
+      if (price == 50 && !DefaultPrices.hardware.containsKey(entry.key)) {
+        for (final hwKey in DefaultPrices.hardware.keys) {
+          final shortKey = DefaultPrices._norm(entry.key);
+          final search = shortKey.length > 3 ? shortKey.substring(0, shortKey.length.clamp(0, 8)) : shortKey;
+          if (DefaultPrices._norm(hwKey).contains(search)) {
+            price = DefaultPrices.hardware[hwKey]!;
+            break;
+          }
         }
       }
+
       lines.add(CostLine(
-        item: entry.key,
+        item: normName,
         qty: entry.value.toDouble(),
         unit: entry.key.contains('Ray') ? 'cift' : 'adet',
         unitPrice: price,

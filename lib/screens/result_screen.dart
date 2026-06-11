@@ -488,22 +488,23 @@ class _ResultScreenState extends State<ResultScreen> {
 // ─── Custom Painter for Plate Schema ─────────────────────────────────────
 
 Color _materialColor(String label, {bool light = true}) {
-  // label format: P-MODUL-ParcaAdi-idx/count
+  // Color by material role from Part.role
+  // The label contains role info embedded from Part
+  // Fallback: parse from part name in label
   final parts = label.split('-');
   final name = parts.length > 2 ? parts[2] : '';
-  final modul = parts.length > 1 ? parts[1] : '';
 
-  // Arkalik parts
-  if (name.startsWith('Ark')) {
+  // Arkalik
+  if (label.contains('Arkalik') || name.startsWith('Ark')) {
     return light ? const Color(0xFFFFF3E0) : const Color(0xFFFFCC80); // orange
   }
-  // Door/front parts
-  if (name.startsWith('Kap') || name.startsWith('Cek') || name.startsWith('On panel') ||
-      name.startsWith('Gorunur') || name.startsWith('Kor') || name.startsWith('Alt kap') || name.startsWith('Ust kap') ||
-      name.startsWith('Cam kap')) {
+  // Kapak/on yuzey
+  if (label.contains('Kapak') || name.startsWith('Kap') || name.startsWith('Cek') ||
+      name.startsWith('On panel') || name.startsWith('Gorunur') || name.startsWith('Kor') ||
+      name.startsWith('Alt kap') || name.startsWith('Ust kap') || name.startsWith('Cam kap')) {
     return light ? const Color(0xFFE3F2FD) : const Color(0xFF90CAF9); // blue
   }
-  // Body parts
+  // Govde
   return light ? const Color(0xFFE8F5E9) : const Color(0xFFA5D6A7); // green
 }
 

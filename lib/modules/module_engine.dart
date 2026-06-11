@@ -75,6 +75,8 @@ class HardwareCalc {
 
 class PartBuilder {
   /// Create a single Part with band deduction already computed.
+  /// [materialFull] = actual material display name (e.g. "MDFlam 18mm Beyaz")
+  /// [role] = "govde" | "kapak" | "arkalik" for cost matching
   static Part part({
     required String moduleId,
     required String name,
@@ -82,7 +84,8 @@ class PartBuilder {
     required double netWidth,
     required double netLength,
     required double thickness,
-    required String material,
+    required String materialFull,
+    String role = 'govde',
     List<double> banding = const [0, 0, 0, 0],
     bool grainLocked = false,
     String? label,
@@ -94,7 +97,8 @@ class PartBuilder {
       netWidthMm: netWidth,
       netLengthMm: netLength,
       thicknessMm: thickness,
-      material: material,
+      material: materialFull,
+      role: role,
       banding: banding,
       grainLocked: grainLocked,
       label: label,
@@ -142,7 +146,7 @@ class ArkalikCalc {
       netWidth: G - 4,
       netLength: Y - 4,
       thickness: ModuleDefaults.ta,
-      material: 'Arkalık',
+      materialFull: ModuleEngine.arkalikMat(), role: 'arkalik',
       banding: [0, 0, 0, 0],
     );
   }
@@ -156,7 +160,7 @@ class ArkalikCalc {
       netWidth: G - 2 * ModuleDefaults.t + 2 * k,
       netLength: Y - 2 * ModuleDefaults.t + 2 * k,
       thickness: ModuleDefaults.ta,
-      material: 'Arkalık',
+      materialFull: ModuleEngine.arkalikMat(), role: 'arkalik',
       banding: [0, 0, 0, 0],
     );
   }
@@ -168,6 +172,25 @@ class ModuleEngine {
   final AppSettings settings;
 
   const ModuleEngine({this.settings = const AppSettings()});
+
+  /// Convert material enum to display name.
+  static String _matName(MalzemeTip t) => switch (t) {
+    MalzemeTip.mdf => 'MDF', MalzemeTip.mdflam => 'MDFlam',
+    MalzemeTip.suntalam => 'Suntalam', MalzemeTip.highGloss => 'High Gloss',
+    MalzemeTip.membran => 'Membran', MalzemeTip.akrilik => 'Akrilik',
+  };
+
+  /// Build full material name for body parts.
+  static String govdeMat(MaterialSpec mat) =>
+      '${_matName(mat.bodyMaterial)} ${mat.thicknessMm.toInt()}mm ${mat.bodyColor}';
+
+  /// Build full material name for door/front parts.
+  static String kapakMat(MaterialSpec mat) =>
+      '${_matName(mat.doorMaterial)} ${mat.thicknessMm.toInt()}mm ${mat.doorColor}';
+
+  /// Build full material name for back panel.
+  static String arkalikMat() =>
+      'Arkalik ${ModuleDefaults.ta.toInt()}mm';
 
   /// Generate full part list for a single module.
   List<Part> generateParts(Module mod, MaterialSpec mat) {
@@ -200,29 +223,29 @@ class ModuleEngine {
 
     // 1. Yan ×2
     parts.add(PartBuilder.part(moduleId: modId, name: 'Yan', qty: 2,
-        netWidth: D, netLength: Y, thickness: t, material: 'Gövde',
+        netWidth: D, netLength: Y, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // 2. Alt tabla
     parts.add(PartBuilder.part(moduleId: modId, name: 'Alt tabla', qty: 1,
-        netWidth: G - 2 * t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G - 2 * t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // 3. Ön üst kayıt
     parts.add(PartBuilder.part(moduleId: modId, name: 'Ön üst kayıt', qty: 1,
         netWidth: G - 2 * t, netLength: ModuleDefaults.kayitH, thickness: t,
-        material: 'Gövde', banding: [1, 0, 0, 0]));
+        materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [1, 0, 0, 0]));
 
     // 4. Arka üst kayıt
     parts.add(PartBuilder.part(moduleId: modId, name: 'Arka üst kayıt', qty: 1,
         netWidth: G - 2 * t, netLength: ModuleDefaults.kayitH, thickness: t,
-        material: 'Gövde', banding: [0, 0, 0, 0]));
+        materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [0, 0, 0, 0]));
 
     // 5. Raf
     for (var i = 0; i < nRaf; i++) {
       parts.add(PartBuilder.part(moduleId: modId, name: 'Raf', qty: 1,
           netWidth: G - 2 * t - 2, netLength: D - ModuleDefaults.rf, thickness: t,
-          material: 'Gövde', banding: [1, 0, 0, 0]));
+          materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [1, 0, 0, 0]));
     }
 
     // 6. Arkalık
@@ -234,13 +257,13 @@ class ModuleEngine {
     // 7. Kapak ×1 (tek kapak)
     final f = FrontCalc.frontDims(G, Y, across: 1);
     parts.add(PartBuilder.part(moduleId: modId, name: 'Kapak', qty: 1,
-        netWidth: f.w, netLength: f.h, thickness: t, material: 'Kapak',
+        netWidth: f.w, netLength: f.h, thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
         banding: [2, 2, 2, 2], grainLocked: true));
 
     // Görünür yan panel opsiyonu
     if (mod.params.gorunurYan) {
       parts.add(PartBuilder.part(moduleId: modId, name: 'Görünür yan', qty: 1,
-          netWidth: D, netLength: Y, thickness: t, material: 'Kapak',
+          netWidth: D, netLength: Y, thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
           banding: [1, 0, 1, 1]));
     }
 
@@ -257,13 +280,13 @@ class ModuleEngine {
     final parts = <Part>[];
 
     // Gövde: A1 satır 1–6 (aynı)
-    parts.addAll(_altGovde(modId, G, Y, D, t, nRaf));
+    parts.addAll(_altGovde(modId, G, Y, D, t, nRaf, mat));
 
     // 7. Kapak ×2
     final f = FrontCalc.frontDims(G, Y, across: 2);
     for (var i = 0; i < 2; i++) {
       parts.add(PartBuilder.part(moduleId: modId, name: 'Kapak', qty: 1,
-          netWidth: f.w, netLength: f.h, thickness: t, material: 'Kapak',
+          netWidth: f.w, netLength: f.h, thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
           banding: [2, 2, 2, 2], grainLocked: true));
     }
 
@@ -271,12 +294,12 @@ class ModuleEngine {
     if (mod.params.ortaDikme) {
       parts.add(PartBuilder.part(moduleId: modId, name: 'Orta dikme', qty: 1,
           netWidth: Y - t, netLength: D - ModuleDefaults.ta, thickness: t,
-          material: 'Gövde', banding: [1, 0, 0, 0]));
+          materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [1, 0, 0, 0]));
     }
 
     if (mod.params.gorunurYan) {
       parts.add(PartBuilder.part(moduleId: modId, name: 'Görünür yan', qty: 1,
-          netWidth: D, netLength: Y, thickness: t, material: 'Kapak',
+          netWidth: D, netLength: Y, thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
           banding: [1, 0, 1, 1]));
     }
 
@@ -293,13 +316,13 @@ class ModuleEngine {
     final parts = <Part>[];
 
     // Gövde (raf yok)
-    parts.addAll(_altGovde(modId, G, Y, D, t, 0));
+    parts.addAll(_altGovde(modId, G, Y, D, t, 0, mat));
 
     // Çekmece önleri
     final f = FrontCalc.frontDims(G, Y, across: 1, stacked: nCek);
     for (var i = 0; i < nCek; i++) {
       parts.add(PartBuilder.part(moduleId: modId, name: 'Çekmece önü', qty: 1,
-          netWidth: f.w, netLength: f.h, thickness: t, material: 'Kapak',
+          netWidth: f.w, netLength: f.h, thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
           banding: [2, 2, 2, 2], grainLocked: true));
     }
 
@@ -313,17 +336,17 @@ class ModuleEngine {
       // Kutu yanı ×2
       parts.add(PartBuilder.part(moduleId: modId, name: 'Kutu yanı', qty: 2,
           netWidth: rayBoy.toDouble(), netLength: hKutu.toDouble(),
-          thickness: t, material: 'Gövde', banding: [0.4, 0, 0, 0]));
+          thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [0.4, 0, 0, 0]));
 
       // Kutu ön/arka ×2
       parts.add(PartBuilder.part(moduleId: modId, name: 'Kutu ön/arka', qty: 2,
           netWidth: boxDisEn - 2 * t, netLength: hKutu.toDouble(),
-          thickness: t, material: 'Gövde', banding: [0.4, 0, 0, 0]));
+          thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [0.4, 0, 0, 0]));
 
       // Kutu dibi
       parts.add(PartBuilder.part(moduleId: modId, name: 'Kutu dibi', qty: 1,
           netWidth: boxDisEn, netLength: rayBoy.toDouble(),
-          thickness: ModuleDefaults.ta, material: 'Arkalık',
+          thickness: ModuleDefaults.ta, materialFull: ModuleEngine.arkalikMat(), role: 'arkalik',
           banding: [0, 0, 0, 0]));
     }
 
@@ -340,36 +363,36 @@ class ModuleEngine {
 
     // Yan ×2
     parts.add(PartBuilder.part(moduleId: modId, name: 'Yan', qty: 2,
-        netWidth: D, netLength: Y, thickness: t, material: 'Gövde',
+        netWidth: D, netLength: Y, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Alt tabla (4 kenar bant: su koruması)
     parts.add(PartBuilder.part(moduleId: modId, name: 'Alt tabla', qty: 1,
-        netWidth: G - 2 * t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G - 2 * t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 1, 1, 1]));
 
     // Ön üst kayıt
     parts.add(PartBuilder.part(moduleId: modId, name: 'Ön üst kayıt', qty: 1,
         netWidth: G - 2 * t, netLength: ModuleDefaults.kayitH, thickness: t,
-        material: 'Gövde', banding: [1, 0, 0, 0]));
+        materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [1, 0, 0, 0]));
 
     // Arka bağlantı kaydı (arkalık YOK, tesisat)
     parts.add(PartBuilder.part(moduleId: modId, name: 'Arka bağ. kaydı', qty: 1,
         netWidth: G - 2 * t, netLength: ModuleDefaults.kayitH, thickness: t,
-        material: 'Gövde', banding: [0, 0, 0, 0]));
+        materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [0, 0, 0, 0]));
 
     // Raf default 0 (sifon)
     if (mod.params.rafSayisi > 0) {
       parts.add(PartBuilder.part(moduleId: modId, name: 'Raf', qty: 1,
           netWidth: G - 2 * t - 2, netLength: D - ModuleDefaults.rf, thickness: t,
-          material: 'Gövde', banding: [1, 0, 0, 0]));
+          materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [1, 0, 0, 0]));
     }
 
     // Kapak ×2 (çift kapak)
     final f = FrontCalc.frontDims(G, Y, across: 2);
     for (var i = 0; i < 2; i++) {
       parts.add(PartBuilder.part(moduleId: modId, name: 'Kapak', qty: 1,
-          netWidth: f.w, netLength: f.h, thickness: t, material: 'Kapak',
+          netWidth: f.w, netLength: f.h, thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
           banding: [2, 2, 2, 2], grainLocked: true));
     }
 
@@ -387,29 +410,29 @@ class ModuleEngine {
 
     // Yan ×2
     parts.add(PartBuilder.part(moduleId: modId, name: 'Yan', qty: 2,
-        netWidth: D, netLength: Y, thickness: t, material: 'Gövde',
+        netWidth: D, netLength: Y, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Alt tabla
     parts.add(PartBuilder.part(moduleId: modId, name: 'Alt tabla', qty: 1,
-        netWidth: G - 2 * t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G - 2 * t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Fırın üstü tabla
     parts.add(PartBuilder.part(moduleId: modId, name: 'Fırın üstü tabla', qty: 1,
-        netWidth: G - 2 * t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G - 2 * t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Arka üst kayıt
     parts.add(PartBuilder.part(moduleId: modId, name: 'Arka üst kayıt', qty: 1,
         netWidth: G - 2 * t, netLength: ModuleDefaults.kayitH, thickness: t,
-        material: 'Gövde', banding: [0, 0, 0, 0]));
+        materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [0, 0, 0, 0]));
 
     // Arkalık (sadece üst bölge)
     final arkaBoy = Y - fb - t - 4;
     parts.add(PartBuilder.part(moduleId: modId, name: 'Arkalık', qty: 1,
         netWidth: G - 4, netLength: arkaBoy.clamp(0, arkaBoy),
-        thickness: ModuleDefaults.ta, material: 'Arkalık',
+        thickness: ModuleDefaults.ta, materialFull: ModuleEngine.arkalikMat(), role: 'arkalik',
         banding: [0, 0, 0, 0]));
 
     // Üst ön (çekmece veya sabit panel)
@@ -418,7 +441,7 @@ class ModuleEngine {
     parts.add(PartBuilder.part(moduleId: modId,
         name: isCekmece ? 'Üst çekmece önü' : 'Üst panel', qty: 1,
         netWidth: G - 2 * ModuleDefaults.reveal, netLength: ustOnBoy,
-        thickness: t, material: 'Kapak',
+        thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
         banding: [2, 2, 2, 2], grainLocked: true));
 
     if (isCekmece) {
@@ -428,13 +451,13 @@ class ModuleEngine {
       final hKutu = (ustOnBoy - 30).clamp(ModuleDefaults.minCekmeceOn, 180);
       parts.add(PartBuilder.part(moduleId: modId, name: 'Kutu yanı', qty: 2,
           netWidth: rayBoy.toDouble(), netLength: hKutu.toDouble(),
-          thickness: t, material: 'Gövde', banding: [0.4, 0, 0, 0]));
+          thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [0.4, 0, 0, 0]));
       parts.add(PartBuilder.part(moduleId: modId, name: 'Kutu ön/arka', qty: 2,
           netWidth: boxDisEn - 2 * t, netLength: hKutu.toDouble(),
-          thickness: t, material: 'Gövde', banding: [0.4, 0, 0, 0]));
+          thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [0.4, 0, 0, 0]));
       parts.add(PartBuilder.part(moduleId: modId, name: 'Kutu dibi', qty: 1,
           netWidth: boxDisEn, netLength: rayBoy.toDouble(),
-          thickness: ModuleDefaults.ta, material: 'Arkalık',
+          thickness: ModuleDefaults.ta, materialFull: ModuleEngine.arkalikMat(), role: 'arkalik',
           banding: [0, 0, 0, 0]));
     }
 
@@ -453,7 +476,7 @@ class ModuleEngine {
     // Eğer hat sonundaysa görünür yan eklenir
     if (mod.params.gorunurYan) {
       parts.add(PartBuilder.part(moduleId: modId, name: 'Görünür yan', qty: 1,
-          netWidth: D, netLength: Y, thickness: t, material: 'Kapak',
+          netWidth: D, netLength: Y, thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
           banding: [1, 0, 1, 1]));
     }
 
@@ -461,7 +484,7 @@ class ModuleEngine {
     final komsuYanSayisi = 2; // varsayılan: iki yanda komşu var
     parts.add(PartBuilder.part(moduleId: modId, name: 'Üst bağ. kaydı', qty: 1,
         netWidth: G - komsuYanSayisi * t, netLength: ModuleDefaults.kayitH,
-        thickness: t, material: 'Gövde', banding: [1, 0, 0, 0]));
+        thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [1, 0, 0, 0]));
 
     return _labelParts(parts, modId);
   }
@@ -478,51 +501,51 @@ class ModuleEngine {
 
     // Yan (duvar tarafı) ×2
     parts.add(PartBuilder.part(moduleId: modId, name: 'Yan', qty: 2,
-        netWidth: D, netLength: Y, thickness: t, material: 'Gövde',
+        netWidth: D, netLength: Y, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Alt tabla parça-1
     parts.add(PartBuilder.part(moduleId: modId, name: 'Alt tabla P1', qty: 1,
-        netWidth: G1 - t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G1 - t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Alt tabla parça-2
     parts.add(PartBuilder.part(moduleId: modId, name: 'Alt tabla P2', qty: 1,
-        netWidth: G2 - D - t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G2 - D - t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Ön üst kayıt ×2
     parts.add(PartBuilder.part(moduleId: modId, name: 'Ön üst kayıt', qty: 2,
         netWidth: G1 - t, netLength: ModuleDefaults.kayitH, thickness: t,
-        material: 'Gövde', banding: [1, 0, 0, 0]));
+        materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [1, 0, 0, 0]));
 
     // Kör dolgu paneli
     parts.add(PartBuilder.part(moduleId: modId, name: 'Kör dolgu', qty: 1,
-        netWidth: kd, netLength: Y, thickness: t, material: 'Kapak',
+        netWidth: kd, netLength: Y, thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
         banding: [1, 0, 0, 0]));
 
     // Arkalık ×2
     parts.add(PartBuilder.part(moduleId: modId, name: 'Arkalık P1', qty: 1,
         netWidth: G1 - 4, netLength: Y - 4, thickness: ModuleDefaults.ta,
-        material: 'Arkalık', banding: [0, 0, 0, 0]));
+        materialFull: ModuleEngine.arkalikMat(), role: 'arkalik', banding: [0, 0, 0, 0]));
     parts.add(PartBuilder.part(moduleId: modId, name: 'Arkalık P2', qty: 1,
         netWidth: G2 - D - 4, netLength: Y - 4, thickness: ModuleDefaults.ta,
-        material: 'Arkalık', banding: [0, 0, 0, 0]));
+        materialFull: ModuleEngine.arkalikMat(), role: 'arkalik', banding: [0, 0, 0, 0]));
 
     // Kapak ×1
     final kapakEn = G1 - D - kd - 2 * ModuleDefaults.reveal;
     parts.add(PartBuilder.part(moduleId: modId, name: 'Kapak', qty: 1,
         netWidth: kapakEn, netLength: Y - 2 * ModuleDefaults.reveal,
-        thickness: t, material: 'Kapak',
+        thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
         banding: [2, 2, 2, 2], grainLocked: true));
 
     // Raf: L-raf yerine 2 düz raf
     parts.add(PartBuilder.part(moduleId: modId, name: 'Raf P1', qty: 1,
         netWidth: G1 - t - 2, netLength: D - ModuleDefaults.rf, thickness: t,
-        material: 'Gövde', banding: [1, 0, 0, 0]));
+        materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [1, 0, 0, 0]));
     parts.add(PartBuilder.part(moduleId: modId, name: 'Raf P2', qty: 1,
         netWidth: G2 - D - t - 2, netLength: D - ModuleDefaults.rf, thickness: t,
-        material: 'Gövde', banding: [1, 0, 0, 0]));
+        materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [1, 0, 0, 0]));
 
     return _labelParts(parts, modId);
   }
@@ -538,24 +561,24 @@ class ModuleEngine {
 
     // Yan ×2
     parts.add(PartBuilder.part(moduleId: modId, name: 'Yan', qty: 2,
-        netWidth: D, netLength: Y, thickness: t, material: 'Gövde',
+        netWidth: D, netLength: Y, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Alt tabla
     parts.add(PartBuilder.part(moduleId: modId, name: 'Alt tabla', qty: 1,
-        netWidth: G - 2 * t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G - 2 * t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Üst tabla
     parts.add(PartBuilder.part(moduleId: modId, name: 'Üst tabla', qty: 1,
-        netWidth: G - 2 * t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G - 2 * t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Raf
     for (var i = 0; i < nRaf; i++) {
       parts.add(PartBuilder.part(moduleId: modId, name: 'Raf', qty: 1,
           netWidth: G - 2 * t - 2, netLength: D - ModuleDefaults.rf, thickness: t,
-          material: 'Gövde', banding: [1, 0, 0, 0]));
+          materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [1, 0, 0, 0]));
     }
 
     // Arkalık
@@ -567,12 +590,12 @@ class ModuleEngine {
     // Kapak ×1
     final f = FrontCalc.frontDims(G, Y, across: 1);
     parts.add(PartBuilder.part(moduleId: modId, name: 'Kapak', qty: 1,
-        netWidth: f.w, netLength: f.h, thickness: t, material: 'Kapak',
+        netWidth: f.w, netLength: f.h, thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
         banding: [2, 2, 2, 2], grainLocked: true));
 
     if (mod.params.gorunurYan) {
       parts.add(PartBuilder.part(moduleId: modId, name: 'Görünür yan', qty: 1,
-          netWidth: D, netLength: Y, thickness: t, material: 'Kapak',
+          netWidth: D, netLength: Y, thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
           banding: [1, 0, 1, 1]));
     }
 
@@ -589,13 +612,13 @@ class ModuleEngine {
     final parts = <Part>[];
 
     // U1 gövdesi (kapak hariç)
-    parts.addAll(_ustGovde(modId, G, Y, D, t, nRaf));
+    parts.addAll(_ustGovde(modId, G, Y, D, t, nRaf, mat));
 
     // Kapak ×2
     final f = FrontCalc.frontDims(G, Y, across: 2);
     for (var i = 0; i < 2; i++) {
       parts.add(PartBuilder.part(moduleId: modId, name: 'Kapak', qty: 1,
-          netWidth: f.w, netLength: f.h, thickness: t, material: 'Kapak',
+          netWidth: f.w, netLength: f.h, thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
           banding: [2, 2, 2, 2], grainLocked: true));
     }
 
@@ -612,7 +635,7 @@ class ModuleEngine {
     final parts = <Part>[];
 
     // U1/U2 gövdesi
-    parts.addAll(_ustGovde(modId, G, Y, D, t, nRaf));
+    parts.addAll(_ustGovde(modId, G, Y, D, t, nRaf, mat));
 
     // Kapak sayısı: G ≤ 600 → 1, değilse 2
     final kSayisi = G <= 600 ? 1 : 2;
@@ -626,11 +649,11 @@ class ModuleEngine {
       for (var i = 0; i < kSayisi; i++) {
         // Çerçeve dikme ×2
         parts.add(PartBuilder.part(moduleId: modId, name: 'Cam kapak dikme', qty: 2,
-            netWidth: 60, netLength: f.h, thickness: t, material: 'Kapak',
+            netWidth: 60, netLength: f.h, thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
             banding: [2, 2, 2, 2], grainLocked: true));
         // Çerçeve başlık ×2
         parts.add(PartBuilder.part(moduleId: modId, name: 'Cam kapak başlık', qty: 2,
-            netWidth: 60, netLength: f.w - 120, thickness: t, material: 'Kapak',
+            netWidth: 60, netLength: f.w - 120, thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
             banding: [2, 2, 2, 2], grainLocked: true));
       }
     }
@@ -648,18 +671,18 @@ class ModuleEngine {
 
     // Yan ×2
     parts.add(PartBuilder.part(moduleId: modId, name: 'Yan', qty: 2,
-        netWidth: D, netLength: Y, thickness: t, material: 'Gövde',
+        netWidth: D, netLength: Y, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Üst tabla
     parts.add(PartBuilder.part(moduleId: modId, name: 'Üst tabla', qty: 1,
-        netWidth: G - 2 * t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G - 2 * t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Ön panel/kapak
     final f = FrontCalc.frontDims(G, Y, across: 1);
     parts.add(PartBuilder.part(moduleId: modId, name: 'Ön panel', qty: 1,
-        netWidth: f.w, netLength: f.h, thickness: t, material: 'Kapak',
+        netWidth: f.w, netLength: f.h, thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
         banding: [2, 2, 2, 2], grainLocked: true));
 
     // Alt tabla ve arkalık YOK (baca/cihaz)
@@ -679,43 +702,43 @@ class ModuleEngine {
 
     // Yan ×2
     parts.add(PartBuilder.part(moduleId: modId, name: 'Yan', qty: 2,
-        netWidth: D, netLength: Y, thickness: t, material: 'Gövde',
+        netWidth: D, netLength: Y, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Alt tabla ×2
     parts.add(PartBuilder.part(moduleId: modId, name: 'Alt tabla P1', qty: 1,
-        netWidth: G1 - t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G1 - t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
     parts.add(PartBuilder.part(moduleId: modId, name: 'Alt tabla P2', qty: 1,
-        netWidth: G2 - D - t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G2 - D - t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Üst tabla ×2
     parts.add(PartBuilder.part(moduleId: modId, name: 'Üst tabla P1', qty: 1,
-        netWidth: G1 - t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G1 - t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
     parts.add(PartBuilder.part(moduleId: modId, name: 'Üst tabla P2', qty: 1,
-        netWidth: G2 - D - t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G2 - D - t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Kör dolgu
     parts.add(PartBuilder.part(moduleId: modId, name: 'Kör dolgu', qty: 1,
-        netWidth: kd, netLength: Y, thickness: t, material: 'Kapak',
+        netWidth: kd, netLength: Y, thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
         banding: [1, 0, 0, 0]));
 
     // Arkalık ×2
     parts.add(PartBuilder.part(moduleId: modId, name: 'Arkalık P1', qty: 1,
         netWidth: G1 - 4, netLength: Y - 4, thickness: ModuleDefaults.ta,
-        material: 'Arkalık', banding: [0, 0, 0, 0]));
+        materialFull: ModuleEngine.arkalikMat(), role: 'arkalik', banding: [0, 0, 0, 0]));
     parts.add(PartBuilder.part(moduleId: modId, name: 'Arkalık P2', qty: 1,
         netWidth: G2 - D - 4, netLength: Y - 4, thickness: ModuleDefaults.ta,
-        material: 'Arkalık', banding: [0, 0, 0, 0]));
+        materialFull: ModuleEngine.arkalikMat(), role: 'arkalik', banding: [0, 0, 0, 0]));
 
     // Kapak ×1
     final kapakEn = G1 - D - kd - 2 * ModuleDefaults.reveal;
     parts.add(PartBuilder.part(moduleId: modId, name: 'Kapak', qty: 1,
         netWidth: kapakEn, netLength: Y - 2 * ModuleDefaults.reveal,
-        thickness: t, material: 'Kapak',
+        thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
         banding: [2, 2, 2, 2], grainLocked: true));
 
     return _labelParts(parts, modId);
@@ -731,29 +754,29 @@ class ModuleEngine {
 
     // Yan ×2
     parts.add(PartBuilder.part(moduleId: modId, name: 'Yan', qty: 2,
-        netWidth: D, netLength: Y, thickness: t, material: 'Gövde',
+        netWidth: D, netLength: Y, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Alt tabla
     parts.add(PartBuilder.part(moduleId: modId, name: 'Alt tabla', qty: 1,
-        netWidth: G - 2 * t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G - 2 * t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Üst tabla
     parts.add(PartBuilder.part(moduleId: modId, name: 'Üst tabla', qty: 1,
-        netWidth: G - 2 * t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G - 2 * t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Sabit ara tabla (1400 hizasında)
     parts.add(PartBuilder.part(moduleId: modId, name: 'Ara tabla', qty: 1,
-        netWidth: G - 2 * t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G - 2 * t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
 
     // Raflar ×4
     for (var i = 0; i < 4; i++) {
       parts.add(PartBuilder.part(moduleId: modId, name: 'Raf', qty: 1,
           netWidth: G - 2 * t - 2, netLength: D - ModuleDefaults.rf, thickness: t,
-          material: 'Gövde', banding: [1, 0, 0, 0]));
+          materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [1, 0, 0, 0]));
     }
 
     // Arkalık — 2076 > 1830 ise 2 parçaya böl (§0.5/1)
@@ -762,10 +785,10 @@ class ModuleEngine {
       // Split into 2 pieces; ek kayıt arkasında
       parts.add(PartBuilder.part(moduleId: modId, name: 'Arkalık alt', qty: 1,
           netWidth: G - 4, netLength: 1400, thickness: ModuleDefaults.ta,
-          material: 'Arkalık', banding: [0, 0, 0, 0]));
+          materialFull: ModuleEngine.arkalikMat(), role: 'arkalik', banding: [0, 0, 0, 0]));
       parts.add(PartBuilder.part(moduleId: modId, name: 'Arkalık üst', qty: 1,
           netWidth: G - 4, netLength: arkaBoy - 1400, thickness: ModuleDefaults.ta,
-          material: 'Arkalık', banding: [0, 0, 0, 0]));
+          materialFull: ModuleEngine.arkalikMat(), role: 'arkalik', banding: [0, 0, 0, 0]));
     } else {
       final arkalik = settings.arkalikTip == ArkalikTip.kanal
           ? ArkalikCalc.kanal(modId, G, Y)
@@ -782,10 +805,10 @@ class ModuleEngine {
     for (var i = 0; i < kSayisi; i++) {
       parts.add(PartBuilder.part(moduleId: modId, name: 'Alt kapak', qty: 1,
           netWidth: kapakEn, netLength: altKapakBoy, thickness: t,
-          material: 'Kapak', banding: [2, 2, 2, 2], grainLocked: true));
+          materialFull: ModuleEngine.kapakMat(mat), role: 'kapak', banding: [2, 2, 2, 2], grainLocked: true));
       parts.add(PartBuilder.part(moduleId: modId, name: 'Üst kapak', qty: 1,
           netWidth: kapakEn, netLength: ustKapakBoy, thickness: t,
-          material: 'Kapak', banding: [2, 2, 2, 2], grainLocked: true));
+          materialFull: ModuleEngine.kapakMat(mat), role: 'kapak', banding: [2, 2, 2, 2], grainLocked: true));
     }
 
     return _labelParts(parts, modId);
@@ -801,7 +824,7 @@ class ModuleEngine {
 
     // Boy yan panel (görünür → kapak malzemesi)
     parts.add(PartBuilder.part(moduleId: modId, name: 'Boy yan panel', qty: 1,
-        netWidth: 600, netLength: 2080, thickness: t, material: 'Kapak',
+        netWidth: 600, netLength: 2080, thickness: t, materialFull: ModuleEngine.kapakMat(mat), role: 'kapak',
         banding: [1, 0, 1, 1]));
 
     // Üst kutu (U1 formülü, Y=350–400)
@@ -813,7 +836,7 @@ class ModuleEngine {
     // Üst bağlantı kaydı
     parts.add(PartBuilder.part(moduleId: modId, name: 'Üst bağ. kaydı', qty: 1,
         netWidth: G - t, netLength: ModuleDefaults.kayitH, thickness: t,
-        material: 'Gövde', banding: [0, 0, 0, 0]));
+        materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [0, 0, 0, 0]));
 
     return _labelParts(parts, modId);
   }
@@ -821,25 +844,25 @@ class ModuleEngine {
   // ─── Yardımcı Metotlar ───────────────────────────────────────────────────
 
   /// Alt modül gövde parçaları (A1/A2/A3 ortak: satır 1–6)
-  List<Part> _altGovde(String modId, double G, double Y, double D, double t, int nRaf) {
+  List<Part> _altGovde(String modId, double G, double Y, double D, double t, int nRaf, MaterialSpec mat) {
     final parts = <Part>[];
 
     parts.add(PartBuilder.part(moduleId: modId, name: 'Yan', qty: 2,
-        netWidth: D, netLength: Y, thickness: t, material: 'Gövde',
+        netWidth: D, netLength: Y, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
     parts.add(PartBuilder.part(moduleId: modId, name: 'Alt tabla', qty: 1,
-        netWidth: G - 2 * t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G - 2 * t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
     parts.add(PartBuilder.part(moduleId: modId, name: 'Ön üst kayıt', qty: 1,
         netWidth: G - 2 * t, netLength: ModuleDefaults.kayitH, thickness: t,
-        material: 'Gövde', banding: [1, 0, 0, 0]));
+        materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [1, 0, 0, 0]));
     parts.add(PartBuilder.part(moduleId: modId, name: 'Arka üst kayıt', qty: 1,
         netWidth: G - 2 * t, netLength: ModuleDefaults.kayitH, thickness: t,
-        material: 'Gövde', banding: [0, 0, 0, 0]));
+        materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [0, 0, 0, 0]));
     for (var i = 0; i < nRaf; i++) {
       parts.add(PartBuilder.part(moduleId: modId, name: 'Raf', qty: 1,
           netWidth: G - 2 * t - 2, netLength: D - ModuleDefaults.rf, thickness: t,
-          material: 'Gövde', banding: [1, 0, 0, 0]));
+          materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [1, 0, 0, 0]));
     }
     final arkalik = settings.arkalikTip == ArkalikTip.kanal
         ? ArkalikCalc.kanal(modId, G, Y)
@@ -850,22 +873,22 @@ class ModuleEngine {
   }
 
   /// Üst modül gövde parçaları (U1/U2/U3 ortak)
-  List<Part> _ustGovde(String modId, double G, double Y, double D, double t, int nRaf) {
+  List<Part> _ustGovde(String modId, double G, double Y, double D, double t, int nRaf, MaterialSpec mat) {
     final parts = <Part>[];
 
     parts.add(PartBuilder.part(moduleId: modId, name: 'Yan', qty: 2,
-        netWidth: D, netLength: Y, thickness: t, material: 'Gövde',
+        netWidth: D, netLength: Y, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
     parts.add(PartBuilder.part(moduleId: modId, name: 'Alt tabla', qty: 1,
-        netWidth: G - 2 * t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G - 2 * t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
     parts.add(PartBuilder.part(moduleId: modId, name: 'Üst tabla', qty: 1,
-        netWidth: G - 2 * t, netLength: D, thickness: t, material: 'Gövde',
+        netWidth: G - 2 * t, netLength: D, thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde',
         banding: [1, 0, 0, 0]));
     for (var i = 0; i < nRaf; i++) {
       parts.add(PartBuilder.part(moduleId: modId, name: 'Raf', qty: 1,
           netWidth: G - 2 * t - 2, netLength: D - ModuleDefaults.rf, thickness: t,
-          material: 'Gövde', banding: [1, 0, 0, 0]));
+          materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [1, 0, 0, 0]));
     }
     final arkalik = settings.arkalikTip == ArkalikTip.kanal
         ? ArkalikCalc.kanal(modId, G, Y)

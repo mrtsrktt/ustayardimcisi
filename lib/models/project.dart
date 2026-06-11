@@ -244,7 +244,8 @@ class Part {
   final double netWidthMm;
   final double netLengthMm;
   final double thicknessMm;
-  final String material;        // "Gövde" | "Kapak" | "Arkalık"
+  final String material;        // Tam malzeme adi: "MDFlam 18mm Beyaz"
+  final String role;            // "govde" | "kapak" | "arkalik" — maliyet eslestirme icin
   final List<double> banding;   // [Ön, Arka, Sol, Sağ] band thicknesses
   final bool grainLocked;
   final String? label;          // unique label e.g. "P-A2.3-07"
@@ -257,6 +258,7 @@ class Part {
     required this.netLengthMm,
     required this.thicknessMm,
     required this.material,
+    this.role = 'govde',
     this.banding = const [0, 0, 0, 0],
     this.grainLocked = false,
     this.label,

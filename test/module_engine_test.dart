@@ -277,7 +277,7 @@ void testBantDusumu() {
     netWidth: 497,
     netLength: 736,
     thickness: 18,
-    material: 'Kapak',
+    materialFull: 'High Gloss 18mm Beyaz', role: 'kapak',
     banding: [2, 2, 2, 2],
   );
 

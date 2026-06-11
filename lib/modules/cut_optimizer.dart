@@ -112,7 +112,7 @@ class CutOptimizer {
           shelf.placed.add(_PlacedItem(
             label: item.label, xMm: rightmostX, yMm: shelf.yMm,
             widthMm: item.netWidth, lengthMm: item.netLength,
-            rotated: false, id: item._id,
+            rotated: false, id: item._id, material: item.material,
           ));
           placed.add(shelf.placed.last);
           placed_ = true;
@@ -124,7 +124,7 @@ class CutOptimizer {
           shelf.placed.add(_PlacedItem(
             label: item.label, xMm: rightmostX, yMm: shelf.yMm,
             widthMm: item.netLength, lengthMm: item.netWidth,
-            rotated: true, id: item._id,
+            rotated: true, id: item._id, material: item.material,
           ));
           placed.add(shelf.placed.last);
           placed_ = true;
@@ -144,7 +144,7 @@ class CutOptimizer {
         shelf.placed.add(_PlacedItem(
           label: item.label, xMm: config.trimMm, yMm: lastShelfBottom,
           widthMm: item.netWidth, lengthMm: item.netLength,
-          rotated: false, id: item._id,
+          rotated: false, id: item._id, material: item.material,
         ));
         placed.add(shelf.placed.last);
         shelves.add(shelf);
@@ -162,7 +162,7 @@ class CutOptimizer {
 
     return (
       SheetLayout(
-        material: placed.isNotEmpty ? placed.first.label.split('-').first : '?',
+        material: placed.isNotEmpty ? placed.first.material : '?',
         widthMm: plateW, lengthMm: plateL,
         partsPlaced: placed.map((p) => PlacedPartData(
           label: p.label, xMm: p.xMm, yMm: p.yMm,
@@ -264,7 +264,7 @@ class _CutItem {
     required this.netWidth,
     required this.netLength,
     this.grainLocked = false,
-    this.material = '',
+    required this.material,
   }) : _id = _idCounter++;
 }
 
@@ -284,6 +284,7 @@ class _PlacedItem {
   final double lengthMm;
   final bool rotated;
   final int _id;
+  final String material;
 
   _PlacedItem({
     required this.label,
@@ -293,6 +294,7 @@ class _PlacedItem {
     required this.lengthMm,
     this.rotated = false,
     required int id,
+    required this.material,
   }) : _id = id;
 }
 

@@ -227,7 +227,7 @@ void main() {
       final part = PartBuilder.part(
         moduleId: 'TEST', name: 'Kapak', qty: 1,
         netWidth: 497, netLength: 736, thickness: 18,
-        material: 'Kapak', banding: [2, 2, 2, 2],
+        materialFull: 'High Gloss 18mm Beyaz', role: 'kapak', banding: [2, 2, 2, 2],
       );
       expect(near(part.cutWidthMm, 497 - 4), true);
       expect(near(part.cutLengthMm, 736 - 4), true);

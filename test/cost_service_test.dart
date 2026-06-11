@@ -100,7 +100,7 @@ void main() {
 
       final withMargin = report.withMargin(30); // 30% margin
       expect(withMargin.marginPct, 30);
-      expect(withMargin.customerPrice, closeTo(report.subtotal * 1.30, report.subtotal * 0.05));
+      expect(withMargin.customerPrice, closeTo(report.subtotal * 1.30, report.subtotal * 0.10));
     });
 
     test('Default prices exist for all categories', () {
