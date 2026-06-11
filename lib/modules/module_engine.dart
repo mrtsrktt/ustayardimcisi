@@ -925,6 +925,7 @@ class ModuleEngine {
         netLengthMm: p.netLengthMm,
         thicknessMm: p.thicknessMm,
         material: p.material,
+        role: p.role,
         banding: p.banding,
         grainLocked: p.grainLocked,
         label: label,

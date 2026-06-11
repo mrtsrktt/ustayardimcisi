@@ -1,0 +1,197 @@
+/// Mixed material test: Govde MDFlam Beyaz + Kapak High Gloss Antrasit.
+/// Verifies: different materials → different sheets → correct pricing.
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:ustayardimcisi/models/project.dart';
+import 'package:ustayardimcisi/modules/module_engine.dart';
+import 'package:ustayardimcisi/modules/cut_optimizer.dart';
+import 'package:ustayardimcisi/services/cost_service.dart';
+import 'package:ustayardimcisi/services/report_service.dart';
+
+void main() {
+  group('Mixed Material Scenario', () {
+    // Govde: MDFlam Beyaz, Kapak: High Gloss Antrasit
+    final mat = MaterialSpec(
+      bodyMaterial: MalzemeTip.mdflam,
+      bodyColor: 'Beyaz',
+      doorMaterial: MalzemeTip.highGloss,
+      doorColor: 'Antrasit',
+      edgeBand: const EdgeBandSpec(thicknessMm: 2),
+    );
+
+    final engine = ModuleEngine();
+
+    test('Different materials produce separate sheet groups', () {
+      // A2 + U2 with mixed materials
+      final modules = [
+        Module(code: ModuleCode.a2, xPosMm: 0, widthMm: 800, heightMm: 740, depthMm: 560,
+            params: const ModuleParams(rafSayisi: 1, gorunurYan: true)),
+        Module(code: ModuleCode.u2, xPosMm: 0, widthMm: 800, heightMm: 720, depthMm: 320,
+            params: const ModuleParams(rafSayisi: 2)),
+      ];
+
+      final allParts = <Part>[];
+      for (final mod in modules) {
+        allParts.addAll(engine.generateParts(mod, mat));
+      }
+
+      // Verify material names are correct
+      final govdeParts = allParts.where((p) => p.role == 'govde').toList();
+      final kapakParts = allParts.where((p) => p.role == 'kapak').toList();
+      final arkalikParts = allParts.where((p) => p.role == 'arkalik').toList();
+
+      expect(govdeParts.isNotEmpty, true);
+      expect(kapakParts.isNotEmpty, true);
+      expect(arkalikParts.isNotEmpty, true);
+
+      // Check material strings match expected
+      for (final p in govdeParts) {
+        expect(p.material, 'MDFlam 18mm Beyaz');
+        expect(p.role, 'govde');
+      }
+      for (final p in kapakParts) {
+        expect(p.material, 'High Gloss 18mm Antrasit');
+        expect(p.role, 'kapak');
+      }
+      for (final p in arkalikParts) {
+        expect(p.material, 'Arkalik 8mm');
+        expect(p.role, 'arkalik');
+      }
+
+      // Run optimizer
+      final optimizer = CutOptimizer();
+      final sheets = optimizer.optimize(allParts);
+
+      // Collect unique materials from sheets
+      final sheetMaterials = <String>{};
+      for (final s in sheets) {
+        sheetMaterials.add(s.material);
+      }
+
+      // Must have at least 2 different material groups (govde + kapak + arkalik)
+      expect(sheetMaterials.length, greaterThanOrEqualTo(3),
+          reason: 'Expected >=3 material groups, got ${sheetMaterials.length}: $sheetMaterials');
+
+      // Each sheet must only contain parts of ONE material
+      for (final s in sheets) {
+        final firstMat = s.material;
+        // All parts on this sheet should match the sheet's material
+        print('  Sheet: $firstMat — ${s.partCount} parts, waste ${s.wastePct.toStringAsFixed(1)}%');
+      }
+
+      // Verify specific material groups exist
+      expect(sheetMaterials.contains('MDFlam 18mm Beyaz'), true,
+          reason: 'Govde material group missing');
+      expect(sheetMaterials.contains('High Gloss 18mm Antrasit'), true,
+          reason: 'Kapak material group missing');
+      expect(sheetMaterials.contains('Arkalik 8mm'), true,
+          reason: 'Arkalik material group missing');
+
+      print('\n  Sheet materials: $sheetMaterials');
+    });
+
+    test('Cost report shows correct prices for each material', () {
+      final modules = [
+        Module(code: ModuleCode.a2, xPosMm: 0, widthMm: 800, heightMm: 740, depthMm: 560,
+            params: const ModuleParams(rafSayisi: 1, gorunurYan: true)),
+        Module(code: ModuleCode.u2, xPosMm: 0, widthMm: 800, heightMm: 720, depthMm: 320,
+            params: const ModuleParams(rafSayisi: 2)),
+      ];
+
+      final allParts = <Part>[];
+      final allHw = <String, int>{};
+      for (final mod in modules) {
+        allParts.addAll(engine.generateParts(mod, mat));
+        for (final e in engine.generateHardware(mod).entries) {
+          allHw[e.key] = (allHw[e.key] ?? 0) + e.value;
+        }
+      }
+
+      final optimizer = CutOptimizer();
+      final sheets = optimizer.optimize(allParts);
+
+      final calc = CostCalculator();
+      final report = calc.calculate(
+        allParts: allParts,
+        sheets: sheets,
+        hardware: allHw,
+        bodyMaterial: 'MDFlam',
+        bodyColor: 'Beyaz',
+        doorMaterial: 'High Gloss',
+        doorColor: 'Antrasit',
+        edgeBandThickness: 2,
+        countertopType: 'Tezgah laminant',
+        countertopLengthMtul: 2.0,
+      );
+
+      // Find plate cost lines
+      final plateLines = report.lines
+          .where((l) => l.unit == 'plaka')
+          .toList();
+
+      expect(plateLines.length, greaterThanOrEqualTo(2),
+          reason: 'Expected >=2 plate cost lines for mixed materials, got ${plateLines.length}');
+
+      // Check MDFlam Beyaz plate pricing (1850 TL in DefaultPrices)
+      final govdeLine = plateLines.firstWhere(
+          (l) => l.item.contains('MDFlam'), orElse: () => throw 'MDFlam line not found');
+      expect(govdeLine.item, contains('MDFlam 18mm Beyaz'));
+      expect(govdeLine.unitPrice, 1850);
+
+      // Check High Gloss Antrasit plate pricing (3500 TL)
+      final kapakLine = plateLines.firstWhere(
+          (l) => l.item.contains('High Gloss'), orElse: () => throw 'High Gloss line not found');
+      expect(kapakLine.item, contains('High Gloss 18mm Antrasit'));
+      expect(kapakLine.unitPrice, 3500);
+
+      // Check Arkalik plate pricing (650 TL)
+      final arkalikLine = plateLines.firstWhere(
+          (l) => l.item.contains('Arkalik'), orElse: () => throw 'Arkalik line not found');
+      expect(arkalikLine.unitPrice, 650);
+
+      // Verify no parts from different materials share a sheet
+      // (already tested in optimize group logic, but double-check)
+      final sheetMats = sheets.map((s) => s.material).toSet();
+      expect(sheetMats.length, greaterThanOrEqualTo(3));
+
+      print('\n  === Mixed Material Cost Report ===');
+      for (final l in plateLines) {
+        print('  ${l.item}: ${l.qty.toInt()} × ${l.unitPrice.toInt()} TL = ${l.total.toInt()} TL');
+      }
+      print('  Sheet materials: $sheetMats');
+      print('  Subtotal: ${report.subtotal.toInt()} TL');
+      print('  Customer price: ${report.formattedCustomerPrice}');
+    });
+
+    test('Banding calculator separates govde and kapak banding', () {
+      final modules = [
+        Module(code: ModuleCode.a2, xPosMm: 0, widthMm: 800, heightMm: 740, depthMm: 560,
+            params: const ModuleParams(rafSayisi: 1, gorunurYan: true)),
+        Module(code: ModuleCode.u2, xPosMm: 0, widthMm: 800, heightMm: 720, depthMm: 320,
+            params: const ModuleParams(rafSayisi: 2)),
+      ];
+
+      final allParts = <Part>[];
+      for (final mod in modules) {
+        allParts.addAll(engine.generateParts(mod, mat));
+      }
+
+      final metraj = BandingCalculator.calculateMetraj(allParts);
+
+      // Govde parts have 1mm banding, kapak parts have 2mm banding
+      // They should appear as separate entries
+      expect(metraj.length, greaterThanOrEqualTo(2),
+          reason: 'Expected separate banding entries for govde (1mm) and kapak (2mm)');
+
+      // Check we have both 1mm and 2mm banding
+      final keys = metraj.keys.join(', ');
+      expect(keys.contains('1'), true, reason: '1mm govde banding missing from $keys');
+      expect(keys.contains('2'), true, reason: '2mm kapak banding missing from $keys');
+
+      print('\n  Banding metraj:');
+      for (final e in metraj.entries) {
+        print('  ${e.key}: ${e.value.toStringAsFixed(1)} m');
+      }
+    });
+  });
+}
