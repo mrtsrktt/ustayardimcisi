@@ -50,11 +50,11 @@ class RunEngine {
         bazaUzunluk += m.widthMm;
       }
       // Split if > 2400mm (standard panel limit)
-      const maxBazaParça = 2400.0;
-      int bazaParca = (bazaUzunluk / maxBazaParça).ceil();
+      const maxBazaParca = 2400.0;
+      int bazaParca = (bazaUzunluk / maxBazaParca).ceil();
       double kalan = bazaUzunluk;
       for (var i = 0; i < bazaParca; i++) {
-        final parcaBoy = kalan > maxBazaParça ? maxBazaParça : kalan;
+        final parcaBoy = kalan > maxBazaParca ? maxBazaParca : kalan;
         parts.add(PartBuilder.part(
           moduleId: 'RUN',
           name: 'Baza önü',
