@@ -8,6 +8,7 @@ import '../modules/module_engine.dart';
 import '../modules/placement_engine.dart';
 import '../modules/cut_optimizer.dart';
 import '../services/report_service.dart';
+import '../services/siparis_formu.dart';
 import '../services/cost_service.dart' as cost;
 import '../providers/database_provider.dart';
 
@@ -169,24 +170,24 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
   Future<void> _pdfIndir() async {
     try {
-      final file = await PdfReportGenerator.generate(
-        sheets: _sheets, allParts: _allParts,
+      final file = await SiparisFormuGenerator.generatePdf(
+        allParts: _allParts, sheets: _sheets,
         projectName: widget.customerName, customerName: widget.customerName,
-        outputPath: 'C:\\3matolye\\usta-yardimcisi\\kesim_plani_${widget.customerName.replaceAll(' ', '_')}.pdf',
+        outputPath: 'C:\\3matolye\\usta-yardimcisi\\siparis_${widget.customerName.replaceAll(' ', '_')}.pdf',
       );
       setState(() => _pdfPath = file.path);
-      _mesaj('PDF kaydedildi: ${file.path}');
+      _mesaj('Siparis Formu PDF: ${file.path}');
     } catch (e) { _mesaj('PDF hatasi: $e', true); }
   }
 
   Future<void> _excelIndir() async {
     try {
-      final file = await ExcelReportGenerator.generate(
+      final file = await SiparisFormuGenerator.generateExcel(
         allParts: _allParts, sheets: _sheets, projectName: widget.customerName,
-        outputPath: 'C:\\3matolye\\usta-yardimcisi\\kesim_listesi_${widget.customerName.replaceAll(' ', '_')}.xlsx',
+        outputPath: 'C:\\3matolye\\usta-yardimcisi\\siparis_${widget.customerName.replaceAll(' ', '_')}.xlsx',
       );
       setState(() => _excelPath = file.path);
-      _mesaj('Excel kaydedildi: ${file.path}');
+      _mesaj('Siparis Formu Excel: ${file.path}');
     } catch (e) { _mesaj('Excel hatasi: $e', true); }
   }
 
