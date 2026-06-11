@@ -7,7 +7,9 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import '../database/database.dart';
 import '../providers/database_provider.dart';
+import '../models/project.dart';
 import '../modules/cut_optimizer.dart';
+import '../modules/placement_engine.dart';
 import 'result_screen.dart';
 
 class WizardScreen extends ConsumerStatefulWidget {
@@ -529,25 +531,86 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
     final wallCm = double.tryParse(_duvarCtrl.text) ?? 300;
     _wallLengthMm = wallCm * 10;
 
+    // Run placement engine
+    final altResult = PlacementEngine.placeLower(PlacementInput(
+        wallLengthMm: _wallLengthMm, isLower: true));
+    final ustResult = PlacementEngine.placeUpper(PlacementInput(
+        wallLengthMm: _wallLengthMm, isLower: false));
+    final totalAlt = altResult.modules.fold<double>(0, (s, m) => s + m.widthMm);
+    final totalUst = ustResult.modules.fold<double>(0, (s, m) => s + m.widthMm);
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Tasarim Ozeti', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 8),
-          Text('Bilgilerinizi kontrol edin, hazirsaniz tasarimi olusturun.',
+          Text('Duvar uzerinde modullerinizin on gorunusu:',
               style: TextStyle(fontSize: 18, color: Colors.grey[600])),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
+          // 2D Preview
           Card(
             elevation: 3,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(12),
+              child: LayoutBuilder(
+                builder: (ctx, constraints) {
+                  final previewW = constraints.maxWidth;
+                  final scale = previewW / _wallLengthMm;
+                  const altH = 100.0, ustH = 70.0, tezgahH = 8.0, bazaH = 14.0, boslukH = 40.0;
+                  final totalH = bazaH + altH + tezgahH + boslukH + ustH;
+                  return Column(
+                    children: [
+                      SizedBox(
+                        width: previewW, height: totalH,
+                        child: CustomPaint(
+                          painter: _DuvarOnizleme(
+                            altModules: altResult.modules,
+                            ustModules: ustResult.modules,
+                            wallMm: _wallLengthMm,
+                            scale: scale,
+                            altH: altH, ustH: ustH, tezgahH: tezgahH, bazaH: bazaH, boslukH: boslukH,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Duvar bilgisi
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Duvar: ${wallCm.toStringAsFixed(0)} cm', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                          Text('Alt: ${(totalAlt / 10).toStringAsFixed(0)} cm', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                          Text('Ust: ${(totalUst / 10).toStringAsFixed(0)} cm', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                        ],
+                      ),
+                      // Kalan bosluk uyarisi
+                      if ((_wallLengthMm - totalAlt).abs() > 10 || (_wallLengthMm - totalUst).abs() > 10)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            (_wallLengthMm - totalAlt) > 10 ? 'Alt sırada ${((_wallLengthMm - totalAlt) / 10).toStringAsFixed(0)} cm boşluk var' : (_wallLengthMm - totalAlt) < -10 ? 'Alt sıra ${((totalAlt - _wallLengthMm) / 10).toStringAsFixed(0)} cm taştı!' : 'Ust sırada boşluk/taşma var',
+                            style: TextStyle(fontSize: 13, color: (_wallLengthMm - totalAlt) < -10 ? Colors.red : Colors.orange),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Ozet metni
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
                   _ozet('Musteri', widget.customerName),
-                  _ozet('Duvar', '${wallCm.toStringAsFixed(0)} cm'),
                   _ozet('Fotograf', '${_photos.length} adet'),
                   const Divider(),
                   _ozet('Govde', '$_govdeMalzeme — $_govdeRenk'),
@@ -556,7 +619,7 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
                   _ozet('Cekmece', '$_cekmeceSayisi adet'),
                   _ozet('Camli', _camli ? 'Evet' : 'Hayir'),
                   _ozet('Kulp', _kulpTipi),
-                ].map((w) => Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: w)).toList(),
+                ].map((w) => Padding(padding: const EdgeInsets.symmetric(vertical: 3), child: w)).toList(),
               ),
             ),
           ),
@@ -750,4 +813,100 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
       )),
     );
   }
+}
+
+// ─── 2D Duvar Onizleme CustomPainter ─────────────────────────────────────
+
+class _DuvarOnizleme extends CustomPainter {
+  final List<PlacedModule> altModules;
+  final List<PlacedModule> ustModules;
+  final double wallMm, scale, altH, ustH, tezgahH, bazaH, boslukH;
+
+  _DuvarOnizleme({
+    required this.altModules, required this.ustModules,
+    required this.wallMm, required this.scale,
+    required this.altH, required this.ustH,
+    required this.tezgahH, required this.bazaH, required this.boslukH,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final wallW = wallMm * scale;
+    double y = 0;
+
+    // Üst modüller
+    for (final m in ustModules) {
+      final x = m.xPosMm * scale, w = m.widthMm * scale;
+      final isCamli = m.code == ModuleCode.u3;
+      canvas.drawRect(Rect.fromLTWH(x, y, w, ustH),
+          Paint()..color = isCamli ? const Color(0xFFBBDEFB) : const Color(0xFFE0E0E0));
+      canvas.drawRect(Rect.fromLTWH(x, y, w, ustH),
+          Paint()..color = Colors.black54..style = PaintingStyle.stroke..strokeWidth = 0.5);
+      // Çift kapak çizgisi
+      if (m.code == ModuleCode.u2 && w > 20) {
+        canvas.drawLine(Offset(x + w / 2, y), Offset(x + w / 2, y + ustH),
+            Paint()..color = Colors.black38..strokeWidth = 0.5);
+      }
+      _drawLabel(canvas, m.code.name.toUpperCase(), x + w / 2, y + ustH / 2, w);
+      _drawLabel(canvas, '${(m.widthMm / 10).toStringAsFixed(0)}', x + w / 2, y + ustH - 12, w, size: 6);
+    }
+
+    // Üst-alt boşluğu
+    y += ustH + boslukH;
+    canvas.drawLine(Offset(0, y - boslukH / 2), Offset(wallW, y - boslukH / 2),
+        Paint()..color = Colors.grey[400]!..strokeWidth = 1);
+
+    // Tezgah çizgisi
+    canvas.drawRect(Rect.fromLTWH(0, y - 2, wallW, tezgahH),
+        Paint()..color = Colors.grey[600]!);
+    canvas.drawRect(Rect.fromLTWH(0, y - 2, wallW, tezgahH),
+        Paint()..color = Colors.grey[700]!..style = PaintingStyle.stroke..strokeWidth = 1);
+
+    // Alt modüller
+    y += tezgahH;
+    for (final m in altModules) {
+      final x = m.xPosMm * scale, w = m.widthMm * scale;
+      final color = m.code == ModuleCode.a3 ? const Color(0xFFFFF3E0) : const Color(0xFFE8E8E8);
+      canvas.drawRect(Rect.fromLTWH(x, y, w, altH), Paint()..color = color);
+      canvas.drawRect(Rect.fromLTWH(x, y, w, altH),
+          Paint()..color = Colors.black54..style = PaintingStyle.stroke..strokeWidth = 0.5);
+      // Çekmeceli yatay çizgiler
+      if (m.code == ModuleCode.a3 && w > 10) {
+        for (var cy = y + altH / 3; cy < y + altH; cy += altH / 3) {
+          canvas.drawLine(Offset(x, cy), Offset(x + w, cy),
+              Paint()..color = Colors.black26..strokeWidth = 0.5);
+        }
+      }
+      // Çift kapak dikey çizgi
+      if (m.code == ModuleCode.a2 && w > 20) {
+        canvas.drawLine(Offset(x + w / 2, y), Offset(x + w / 2, y + altH),
+            Paint()..color = Colors.black38..strokeWidth = 0.5);
+      }
+      _drawLabel(canvas, m.code.name.toUpperCase(), x + w / 2, y + altH / 2, w);
+      _drawLabel(canvas, '${(m.widthMm / 10).toStringAsFixed(0)}', x + w / 2, y + altH - 12, w, size: 6);
+    }
+
+    // Baza
+    y += altH;
+    canvas.drawRect(Rect.fromLTWH(0, y, wallW, bazaH),
+        Paint()..color = Colors.grey[800]!);
+    _drawLabel(canvas, 'BAZA', wallW / 2, y + bazaH / 2, wallW, size: 8);
+
+    // Duvar çerçevesi
+    canvas.drawRect(Rect.fromLTWH(0, 0, wallW, y + bazaH),
+        Paint()..color = Colors.black87..style = PaintingStyle.stroke..strokeWidth = 2);
+    // Duvar uzunluğu etiketi
+    _drawLabel(canvas, '${(wallMm / 10).toStringAsFixed(0)} cm', wallW / 2, y + bazaH + 14, wallW);
+  }
+
+  void _drawLabel(Canvas c, String text, double cx, double cy, double maxW, {double size = 9}) {
+    final tp = TextPainter(
+      text: TextSpan(text: text, style: TextStyle(color: Colors.black87, fontSize: size, fontWeight: FontWeight.w500)),
+      textDirection: TextDirection.ltr, maxLines: 1, ellipsis: '…',
+    )..layout(maxWidth: maxW - 4);
+    tp.paint(c, Offset(cx - tp.width / 2, cy - tp.height / 2));
+  }
+
+  @override
+  bool shouldRepaint(covariant _DuvarOnizleme old) => old.wallMm != wallMm || old.scale != scale;
 }
