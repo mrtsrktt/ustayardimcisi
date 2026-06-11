@@ -110,6 +110,7 @@ class DefaultPrices {
   // Labor (optional, per module)
   static const double montajIscilikModul = 250;
   static const double kesimIscilikSaat = 500;
+  static const double cutPricePerPlate = 100; // Kesim ucreti plaka basi
 
   /// Normalize Turkish characters for matching.
   static String _norm(String s) =>
@@ -369,7 +370,16 @@ class CostCalculator {
       ));
     }
 
-    // 7. Labor
+    // 7. Kesim ucreti (plaka basi)
+    lines.add(CostLine(
+      item: 'Kesim ucreti',
+      qty: sheets.length.toDouble(),
+      unit: 'plaka',
+      unitPrice: DefaultPrices.cutPricePerPlate,
+      total: DefaultPrices.cutPricePerPlate * sheets.length,
+    ));
+
+    // 8. Labor
     final modulCount = allParts.map((p) => p.moduleId).toSet().length;
     lines.add(CostLine(
       item: 'Montaj iscilik',

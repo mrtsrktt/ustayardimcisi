@@ -312,6 +312,28 @@ void main() {
       }
       print('\n  Kapak 1220×2800 verified for High Gloss parts');
     });
+
+    test('Kesim ucreti = plaka adedi × 100 TL', () {
+      final engine = ModuleEngine();
+      final mat = MaterialSpec();
+      final mod = Module(code: ModuleCode.a2, xPosMm: 0, widthMm: 800, heightMm: 740, depthMm: 560,
+          params: const ModuleParams(rafSayisi: 1, gorunurYan: true));
+      final parts = engine.generateParts(mod, mat);
+      final optimizer = CutOptimizer();
+      final sheets = optimizer.optimize(parts);
+      final calc = cost.CostCalculator();
+      final report = calc.calculate(
+        allParts: parts, sheets: sheets, hardware: {},
+        bodyMaterial: 'MDFlam', bodyColor: 'Beyaz',
+        doorMaterial: 'MDFlam', doorColor: 'Beyaz',
+        countertopType: 'Tezgah laminant', countertopLengthMtul: 1.0);
+
+      final cutLine = report.lines.firstWhere((l) => l.item == 'Kesim ucreti');
+      expect(cutLine.qty.toInt(), sheets.length);
+      expect(cutLine.unitPrice, 100, reason: '100 TL/plaka');
+      expect(cutLine.total, closeTo(100 * sheets.length, 0.1));
+      print('\n  Kesim ucreti: ${sheets.length} plaka × 100 TL = ${cutLine.total.toInt()} TL');
+    });
   });
 
   group('Bantlama Iscilik Ucreti', () {
