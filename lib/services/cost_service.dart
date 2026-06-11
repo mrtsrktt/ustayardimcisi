@@ -56,6 +56,11 @@ class DefaultPrices {
     'Arkalik 3mm': 350,
     '183×366 18mm MDFlam Beyaz': 3100,
     '183×366 18mm Suntalam Beyaz': 2300,
+    // 1220×2800 plates (High Gloss / Akrilik) — TODO: gercek piyasa fiyati
+    '122×280 18mm High Gloss Beyaz': 2100,
+    '122×280 18mm High Gloss Antrasit': 2300,
+    '122×280 18mm Akrilik Beyaz': 2500,
+    '122×280 18mm Akrilik Antrasit': 2700,
   };
 
   // Edge banding (per meter)

@@ -34,7 +34,10 @@ class CutOptimizer {
 
     for (final entry in groups.entries) {
       final groupParts = entry.value;
-      final sheets = _packGroup(groupParts, entry.key);
+      // Use material-specific plate size based on role
+      final role = groupParts.first.role;
+      final plateSize = config.getSizeFor(role);
+      final sheets = _packGroup(groupParts, plateSize.widthMm, plateSize.lengthMm);
       allSheets.addAll(sheets);
     }
 
@@ -42,7 +45,7 @@ class CutOptimizer {
   }
 
   /// Pack a group of same-material same-thickness parts.
-  List<SheetLayout> _packGroup(List<Part> parts, String materialKey) {
+  List<SheetLayout> _packGroup(List<Part> parts, double plateW, double plateL) {
     // Expand parts by qty into individual items
     final items = <_CutItem>[];
     for (final p in parts) {
@@ -68,7 +71,7 @@ class CutOptimizer {
       final unplaced = items.where((it) => !placedIds.contains(it._id)).toList();
       if (unplaced.isEmpty) break;
 
-      final (sheet, placed) = _packSheet(unplaced, config.plateWidthMm, config.plateLengthMm);
+      final (sheet, placed) = _packSheet(unplaced, plateW, plateL);
       if (placed.isEmpty) break; // safety: part too big for sheet
       sheets.add(sheet);
       placedIds.addAll(placed.map((p) => p._id));
@@ -177,13 +180,25 @@ class CutOptimizer {
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
+class PlateSize {
+  final double widthMm;
+  final double lengthMm;
+
+  const PlateSize({required this.widthMm, required this.lengthMm});
+
+  static const std2100x2800 = PlateSize(widthMm: 2100, lengthMm: 2800);
+  static const std1830x3660 = PlateSize(widthMm: 1830, lengthMm: 3660);
+  static const std1220x2800 = PlateSize(widthMm: 1220, lengthMm: 2800);
+}
+
 class CutConfig {
-  final double plateWidthMm;     // default plate width
-  final double plateLengthMm;    // default plate length
+  final double plateWidthMm;     // default plate width (fallback)
+  final double plateLengthMm;    // default plate length (fallback)
   final double kerfMm;           // testere payı (blade width)
   final double trimMm;           // edge trim allowance
   final bool lockGrain;          // lock grain direction globally
   final double minStripMm;       // minimum strip width
+  final Map<String, PlateSize> materialSizes; // malzeme rolü -> ebat
 
   const CutConfig({
     this.plateWidthMm = 2100,
@@ -192,7 +207,13 @@ class CutConfig {
     this.trimMm = 10,
     this.lockGrain = false,
     this.minStripMm = 50,
+    this.materialSizes = const {},
   });
+
+  /// Get plate size for a material role.
+  PlateSize getSizeFor(String role) {
+    return materialSizes[role] ?? PlateSize(widthMm: plateWidthMm, lengthMm: plateLengthMm);
+  }
 
   /// Create from app settings.
   factory CutConfig.fromSettings(Map<String, String> settings) {

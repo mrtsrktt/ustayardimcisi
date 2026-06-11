@@ -237,4 +237,80 @@ void main() {
       print('\n  3mm kanal arkalik: ${arkalik.netWidthMm.toInt()}×${arkalik.netLengthMm.toInt()} mm');
     });
   });
+
+  group('Plate Size per Material', () {
+    test('Different material roles get different plate sizes', () {
+      final config = CutConfig(materialSizes: {
+        'govde': PlateSize.std2100x2800,
+        'kapak': PlateSize.std1220x2800,
+        'arkalik': PlateSize.std1830x3660,
+      });
+      expect(config.getSizeFor('govde').widthMm, 2100);
+      expect(config.getSizeFor('kapak').widthMm, 1220);
+      expect(config.getSizeFor('arkalik').widthMm, 1830);
+    });
+
+    test('Govde 1830×3660 vs 2100×2800 comparison', () {
+      final engine = ModuleEngine();
+      final mat = MaterialSpec();
+      final mods = [
+        Module(code: ModuleCode.a2, xPosMm: 0, widthMm: 800, heightMm: 740, depthMm: 560,
+            params: const ModuleParams(rafSayisi: 1, gorunurYan: true)),
+        Module(code: ModuleCode.u2, xPosMm: 0, widthMm: 800, heightMm: 720, depthMm: 320,
+            params: const ModuleParams(rafSayisi: 2)),
+      ];
+      final parts = <Part>[];
+      for (final m in mods) { parts.addAll(engine.generateParts(m, mat)); }
+
+      // Size A: 2100×2800
+      final optA = CutOptimizer(config: CutConfig(plateWidthMm: 2100, plateLengthMm: 2800));
+      final sheetsA = optA.optimize(parts);
+      final countA = sheetsA.length;
+      final wasteA = sheetsA.isEmpty ? 0.0 : sheetsA.map((s) => s.wastePct).reduce((a, b) => a + b) / sheetsA.length;
+
+      // Size B: 1830×3660
+      final optB = CutOptimizer(config: CutConfig(plateWidthMm: 1830, plateLengthMm: 3660));
+      final sheetsB = optB.optimize(parts);
+      final countB = sheetsB.length;
+      final wasteB = sheetsB.isEmpty ? 0.0 : sheetsB.map((s) => s.wastePct).reduce((a, b) => a + b) / sheetsB.length;
+
+      print('\n  PLATE SIZE COMPARISON:');
+      print('  2100×2800: $countA sheets, %${wasteA.toStringAsFixed(1)} waste');
+      print('  1830×3660: $countB sheets, %${wasteB.toStringAsFixed(1)} waste');
+
+      // Both should place all parts
+      final totalParts = parts.fold<int>(0, (s, p) => s + p.qty);
+      expect(sheetsA.fold<int>(0, (s, sh) => s + sh.partCount), totalParts);
+      expect(sheetsB.fold<int>(0, (s, sh) => s + sh.partCount), totalParts);
+    });
+
+    test('Kapak 1220×2800 standard size for High Gloss', () {
+      final mat = MaterialSpec(
+        doorMaterial: MalzemeTip.highGloss, doorColor: 'Beyaz',
+        bodyMaterial: MalzemeTip.mdflam, bodyColor: 'Beyaz');
+      final engine = ModuleEngine();
+      final mods = [
+        Module(code: ModuleCode.a2, xPosMm: 0, widthMm: 800, heightMm: 740, depthMm: 560,
+            params: const ModuleParams(rafSayisi: 1, gorunurYan: true)),
+      ];
+      final parts = <Part>[];
+      for (final m in mods) { parts.addAll(engine.generateParts(m, mat)); }
+
+      final config = CutConfig(materialSizes: {
+        'govde': PlateSize.std2100x2800,
+        'kapak': PlateSize.std1220x2800,
+        'arkalik': PlateSize.std2100x2800,
+      });
+      final optimizer = CutOptimizer(config: config);
+      final sheets = optimizer.optimize(parts);
+
+      // Kapak sheets should be 1220×2800
+      for (final s in sheets) {
+        if (s.material.contains('High Gloss')) {
+          expect(s.widthMm, 1220, reason: 'HG kapak 1220×2800 olmali, got ${s.widthMm}×${s.lengthMm}');
+        }
+      }
+      print('\n  Kapak 1220×2800 verified for High Gloss parts');
+    });
+  });
 }
