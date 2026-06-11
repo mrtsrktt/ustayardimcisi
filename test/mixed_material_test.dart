@@ -1,6 +1,7 @@
 /// Mixed material test: Govde MDFlam Beyaz + Kapak High Gloss Antrasit.
 /// Verifies: different materials → different sheets → correct pricing.
 
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ustayardimcisi/models/project.dart';
 import 'package:ustayardimcisi/modules/module_engine.dart';
@@ -191,6 +192,66 @@ void main() {
       print('\n  Banding metraj:');
       for (final e in metraj.entries) {
         print('  ${e.key}: ${e.value.toStringAsFixed(1)} m');
+      }
+    });
+
+    test('Generate real PDF and Excel files with mixed materials', () async {
+      final modules = [
+        Module(code: ModuleCode.a2, xPosMm: 0, widthMm: 800, heightMm: 740, depthMm: 560,
+            params: const ModuleParams(rafSayisi: 1, gorunurYan: true)),
+        Module(code: ModuleCode.u2, xPosMm: 0, widthMm: 800, heightMm: 720, depthMm: 320,
+            params: const ModuleParams(rafSayisi: 2)),
+      ];
+
+      final allParts = <Part>[];
+      for (final mod in modules) {
+        allParts.addAll(engine.generateParts(mod, mat));
+      }
+
+      final optimizer = CutOptimizer();
+      final sheets = optimizer.optimize(allParts);
+
+      // Create output directory
+      final dir = Directory('test_output');
+      if (!dir.existsSync()) dir.createSync(recursive: true);
+
+      // Generate PDF
+      final pdfFile = await PdfReportGenerator.generate(
+        sheets: sheets,
+        allParts: allParts,
+        projectName: 'Test_Karisik_Malzeme',
+        customerName: 'Test Musteri',
+        outputPath: 'test_output/kesim_plani_karisik_malzeme.pdf',
+      );
+      expect(await pdfFile.exists(), true);
+      print('\n  PDF: ${pdfFile.path} (${(await pdfFile.length()) ~/ 1024} KB)');
+
+      // Generate Excel
+      final xlsFile = await ExcelReportGenerator.generate(
+        allParts: allParts,
+        sheets: sheets,
+        projectName: 'Test_Karisik_Malzeme',
+        outputPath: 'test_output/kesim_listesi_karisik_malzeme.xlsx',
+      );
+      expect(await xlsFile.exists(), true);
+      print('  Excel: ${xlsFile.path} (${(await xlsFile.length()) ~/ 1024} KB)');
+
+      // Print sample rows from cut list
+      print('\n  === PDF Kesim Listesi Ornek Satirlar ===');
+      var count = 0;
+      for (final p in allParts) {
+        if (count >= 4) break;
+        print('  ${p.moduleId} | ${p.name} | ${p.cutWidthMm.toInt()}×${p.cutLengthMm.toInt()} mm | ${p.material}');
+        for (var q = 1; q < p.qty && count < 4; q++) {
+          count++;
+        }
+        count++;
+      }
+
+      // Print plate schema headers
+      print('\n  === Plaka Semasi Basliklari ===');
+      for (var i = 0; i < sheets.length; i++) {
+        print('  Plaka ${i + 1}: ${sheets[i].material} — ${sheets[i].partCount} parca');
       }
     });
   });

@@ -53,35 +53,46 @@ class PdfReportGenerator {
 
     // Plate schema pages
     final pageW = PdfPageFormat.a4.width - 40;
+    final maxDrawingH = PdfPageFormat.a4.height - 200; // leave room for header + table
     for (var i = 0; i < sheets.length; i++) {
       final sheet = sheets[i];
+      final scale = (pageW * (sheet.lengthMm / sheet.widthMm) > maxDrawingH)
+          ? maxDrawingH / (pageW * (sheet.lengthMm / sheet.widthMm))
+          : 1.0;
+      final drawingW = pageW * scale;
+      final drawingH = pageW * (sheet.lengthMm / sheet.widthMm) * scale;
+
       pdf.addPage(pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (ctx) => [
-          pw.Header(level: 1, text: 'Plaka ${i + 1}/${sheets.length} — ${sheet.material}'),
-          pw.Paragraph(text: '${sheet.widthMm.toInt()}×${sheet.lengthMm.toInt()} mm — Fire: %${sheet.wastePct.toStringAsFixed(1)}'),
+          pw.Header(level: 1, text: 'Plaka ${i + 1}/${sheets.length} - ${sheet.material}'),
+          pw.Paragraph(text: '${sheet.widthMm.toInt()}×${sheet.lengthMm.toInt()} mm | ${sheet.partCount} parca | Fire: %${sheet.wastePct.toStringAsFixed(1)}'),
+          pw.Paragraph(
+            text: 'Malzeme: ${sheet.material} | Kalinlik: ${sheet.material.contains("8mm") ? "8" : "18"} mm | Parca: ${sheet.partCount} adet',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+          ),
           pw.SizedBox(height: 10),
           // Plate drawing
           pw.Container(
-            width: pageW,
-            height: pageW * (sheet.lengthMm / sheet.widthMm),
+            width: drawingW,
+            height: drawingH,
             decoration: pw.BoxDecoration(border: pw.Border.all()),
             child: pw.Stack(
               children: sheet.partsPlaced.map((p) {
-                final scale = pageW / sheet.widthMm;
+                final rScale = drawingW / sheet.widthMm;
                 return pw.Positioned(
-                  left: p.xMm * scale,
-                  top: p.yMm * scale,
+                  left: p.xMm * rScale,
+                  top: p.yMm * rScale,
                   child: pw.Container(
-                    width: p.widthMm * scale,
-                    height: p.lengthMm * scale,
+                    width: p.widthMm * rScale,
+                    height: p.lengthMm * rScale,
                     decoration: pw.BoxDecoration(
                       border: pw.Border.all(width: 0.5),
                       color: PdfColors.grey100,
                     ),
                     child: pw.Center(
                       child: pw.Text(p.label.split('-').last,
-                          style: pw.TextStyle(fontSize: 6)),
+                          style: pw.TextStyle(fontSize: (6 * rScale).clamp(4, 8))),
                     ),
                   ),
                 );
@@ -186,7 +197,7 @@ class PdfReportGenerator {
             p.label ?? '-', p.name, edges[e],
             (length / 1000).toStringAsFixed(2),
             p.banding[e].toStringAsFixed(1),
-            p.material == 'Kapak' ? 'Kapak rengi' : 'Govde rengi',
+            p.role == 'kapak' ? 'Kapak rengi' : 'Govde rengi',
           ]);
         }
       }
@@ -199,7 +210,7 @@ class PdfReportGenerator {
     for (final p in parts) {
       for (var e = 0; e < 4; e++) {
         if (p.banding[e] > 0) {
-          final key = '${p.material == "Kapak" ? "Kapak" : "Govde"} ${p.banding[e]}mm';
+          final key = '${p.role == "kapak" ? "Kapak" : "Govde"} ${p.banding[e]}mm';
           final length = e <= 1 ? p.netWidthMm : p.netLengthMm;
           groups[key] = (groups[key] ?? 0) + length * p.qty;
         }
