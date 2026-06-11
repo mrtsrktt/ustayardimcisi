@@ -375,6 +375,10 @@ class AppDatabase {
   // ─── Settings ───────────────────────────────────────────────────────────
 
   Future<Map<String, String>> getSettings() async {
+    return getAllSettings();
+  }
+
+  Map<String, String> getAllSettings() {
     final rows = _db.select('SELECT key, value FROM app_settings');
     return {for (final r in rows) r['key'] as String: r['value'] as String};
   }

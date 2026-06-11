@@ -400,4 +400,17 @@ class AppSettings {
     this.useDeduction = true,
     this.maxPartCount = 300,
   });
+
+  factory AppSettings.fromMap(Map<String, String> map) {
+    return AppSettings(
+      kerfMm: double.tryParse(map['kerf_mm'] ?? '') ?? 4.8,
+      trimMm: double.tryParse(map['trim_mm'] ?? '') ?? 10,
+      plateWidthMm: double.tryParse(map['plate_width_mm'] ?? '') ?? 2100,
+      plateLengthMm: double.tryParse(map['plate_length_mm'] ?? '') ?? 2800,
+      arkalikTip: map['arkalik_tip'] == 'kanal' ? ArkalikTip.kanal : ArkalikTip.cakma,
+      minSeritMm: double.tryParse(map['min_serit_mm'] ?? '') ?? 50,
+      useDeduction: map['use_band_deduction'] != 'false',
+      maxPartCount: int.tryParse(map['max_part_count'] ?? '') ?? 300,
+    );
+  }
 }

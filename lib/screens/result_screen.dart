@@ -2,14 +2,16 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/project.dart';
 import '../modules/module_engine.dart';
 import '../modules/placement_engine.dart';
 import '../modules/cut_optimizer.dart';
 import '../services/report_service.dart';
 import '../services/cost_service.dart' as cost;
+import '../providers/database_provider.dart';
 
-class ResultScreen extends StatefulWidget {
+class ResultScreen extends ConsumerStatefulWidget {
   final double wallLengthMm;
   final String govdeMalzeme, govdeRenk;
   final String altKapakMalzeme, altKapakRenk;
@@ -28,10 +30,10 @@ class ResultScreen extends StatefulWidget {
   });
 
   @override
-  State<ResultScreen> createState() => _ResultScreenState();
+  ConsumerState<ResultScreen> createState() => _ResultScreenState();
 }
 
-class _ResultScreenState extends State<ResultScreen> {
+class _ResultScreenState extends ConsumerState<ResultScreen> {
   int _tab = 0;
   String? _pdfPath, _excelPath;
 
@@ -48,8 +50,18 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 
   void _hesapla() {
-    final engine = ModuleEngine();
-    final optimizer = CutOptimizer();
+    // Load settings from DB
+    Map<String, String> settingsMap = {};
+    try {
+      final db = ref.read(databaseProvider);
+      settingsMap = db.getAllSettings();
+    } catch (_) {}
+
+    final appSettings = AppSettings.fromMap(settingsMap);
+    final cutConfig = CutConfig.fromSettings(settingsMap);
+
+    final engine = ModuleEngine(settings: appSettings);
+    final optimizer = CutOptimizer(config: cutConfig);
 
     // Build MaterialSpec from wizard selections
     final mat = MaterialSpec(
