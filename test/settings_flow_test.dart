@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ustayardimcisi/models/project.dart';
 import 'package:ustayardimcisi/modules/module_engine.dart';
 import 'package:ustayardimcisi/modules/cut_optimizer.dart';
+import 'package:ustayardimcisi/services/cost_service.dart' as cost;
 
 void main() {
   group('Settings Flow', () {
@@ -153,6 +154,87 @@ void main() {
       print('  - Plate: ${sheets.first.widthMm.toInt()}×${sheets.first.lengthMm.toInt()}');
       print('  - Kerf: ${config.kerfMm}mm');
       print('  - Parts: $total placed on ${sheets.length} sheet(s)');
+    });
+  });
+
+  group('Arkalik Thickness (3mm vs 8mm)', () {
+    test('3mm arkalik → correct dimensions and price', () {
+      final mat = MaterialSpec(arkalikThicknessMm: 3);
+      final engine = ModuleEngine();
+      final mod = Module(code: ModuleCode.a2, xPosMm: 0, widthMm: 800, heightMm: 740, depthMm: 560,
+          params: const ModuleParams(rafSayisi: 1));
+
+      final parts = engine.generateParts(mod, mat);
+      final arkalik = parts.where((p) => p.role == 'arkalik').first;
+
+      // Thickness should be 3mm
+      expect(arkalik.thicknessMm, 3);
+      expect(arkalik.material, 'Arkalik 3mm');
+
+      // Cakma formula: G−4, Y−4
+      expect(arkalik.netWidthMm, closeTo(800 - 4, 0.1));
+      expect(arkalik.netLengthMm, closeTo(740 - 4, 0.1));
+    });
+
+    test('8mm arkalik → correct dimensions and price', () {
+      final mat = MaterialSpec(arkalikThicknessMm: 8);
+      final engine = ModuleEngine();
+      final mod = Module(code: ModuleCode.a2, xPosMm: 0, widthMm: 800, heightMm: 740, depthMm: 560,
+          params: const ModuleParams(rafSayisi: 1));
+
+      final parts = engine.generateParts(mod, mat);
+      final arkalik = parts.where((p) => p.role == 'arkalik').first;
+
+      expect(arkalik.thicknessMm, 8);
+      expect(arkalik.material, 'Arkalik 8mm');
+    });
+
+    test('3mm vs 8mm different price', () {
+      final optimizer = CutOptimizer();
+      final engine = ModuleEngine();
+      final mod = Module(code: ModuleCode.a2, xPosMm: 0, widthMm: 800, heightMm: 740, depthMm: 560,
+          params: const ModuleParams(rafSayisi: 1));
+
+      // 3mm scenario
+      final parts3 = engine.generateParts(mod, MaterialSpec(arkalikThicknessMm: 3));
+      final sheets3 = optimizer.optimize(parts3);
+      final calc = cost.CostCalculator();
+      final report3 = calc.calculate(allParts: parts3, sheets: sheets3, hardware: {},
+        bodyMaterial: 'MDFlam', bodyColor: 'Beyaz', doorMaterial: 'MDFlam', doorColor: 'Beyaz',
+        countertopType: 'Tezgah laminant', countertopLengthMtul: 1.0);
+      final arkalikLine3 = report3.lines.firstWhere((l) => l.item.contains('Arkalik'));
+
+      // 8mm scenario
+      final parts8 = engine.generateParts(mod, MaterialSpec(arkalikThicknessMm: 8));
+      final sheets8 = optimizer.optimize(parts8);
+      final report8 = calc.calculate(allParts: parts8, sheets: sheets8, hardware: {},
+        bodyMaterial: 'MDFlam', bodyColor: 'Beyaz', doorMaterial: 'MDFlam', doorColor: 'Beyaz',
+        countertopType: 'Tezgah laminant', countertopLengthMtul: 1.0);
+      final arkalikLine8 = report8.lines.firstWhere((l) => l.item.contains('Arkalik'));
+
+      expect(arkalikLine3.unitPrice, 350, reason: 'Arkalik 3mm = 350 TL');
+      expect(arkalikLine8.unitPrice, 650, reason: 'Arkalik 8mm = 650 TL');
+      expect(arkalikLine3.item, contains('3mm'));
+      expect(arkalikLine8.item, contains('8mm'));
+
+      print('\n  Arkalik 3mm: ${arkalikLine3.item} × ${arkalikLine3.unitPrice.toInt()} TL');
+      print('  Arkalik 8mm: ${arkalikLine8.item} × ${arkalikLine8.unitPrice.toInt()} TL');
+    });
+
+    test('3mm kanal arkalik → kanal derinligi = 3mm', () {
+      final settings = const AppSettings(arkalikTip: ArkalikTip.kanal);
+      final mat = MaterialSpec(arkalikThicknessMm: 3);
+      final engine = ModuleEngine(settings: settings);
+      final mod = Module(code: ModuleCode.a2, xPosMm: 0, widthMm: 800, heightMm: 740, depthMm: 560,
+          params: const ModuleParams(rafSayisi: 1));
+
+      final parts = engine.generateParts(mod, mat);
+      final arkalik = parts.where((p) => p.role == 'arkalik').first;
+
+      // Kanal: G − 2t + 2k = 800 − 36 + 6 = 770 (k=3)
+      expect(arkalik.netWidthMm, closeTo(800 - 2 * 18 + 2 * 3, 0.1));
+      expect(arkalik.thicknessMm, 3);
+      print('\n  3mm kanal arkalik: ${arkalik.netWidthMm.toInt()}×${arkalik.netLengthMm.toInt()} mm');
     });
   });
 }

@@ -44,6 +44,7 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
   bool _camli = false;
   String _kulpTipi = 'Modern';
   String _tezgahTipi = 'Laminant';
+  double _arkalikKalinlik = 8; // 3 veya 8 mm
 
   double _wallLengthMm = 3000;
   final _duvarCtrl = TextEditingController(text: '300');
@@ -324,6 +325,22 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
     );
   }
 
+  Widget _arkalikKart(String label, double value) {
+    final sel = _arkalikKalinlik == value;
+    return GestureDetector(
+      onTap: () => setState(() => _arkalikKalinlik = value),
+      child: Container(
+        width: 100, height: 64,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: sel ? Colors.blue : Colors.grey[300]!, width: sel ? 3 : 1),
+          color: sel ? Colors.blue.withAlpha(20) : null,
+        ),
+        child: Center(child: Text(label, style: TextStyle(fontSize: 20, fontWeight: sel ? FontWeight.bold : FontWeight.normal))),
+      ),
+    );
+  }
+
   Widget _sectionTitle(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -428,6 +445,18 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
             title: const Text('Camli kapak', style: TextStyle(fontSize: 18)),
             value: _camli,
             onChanged: (v) => setState(() => _camli = v),
+          ),
+          const SizedBox(height: 16),
+
+          Text('Arkalik Kalinligi', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _arkalikKart('3 mm', 3),
+              const SizedBox(width: 16),
+              _arkalikKart('8 mm', 8),
+            ],
           ),
           const SizedBox(height: 16),
 
@@ -599,6 +628,7 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
         cekmeceSayisi: _cekmeceSayisi,
         camli: _camli,
         kulpTipi: _kulpTipi,
+        arkalikKalinlik: _arkalikKalinlik,
         customerName: widget.customerName,
       )),
     );

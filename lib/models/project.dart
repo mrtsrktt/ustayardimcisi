@@ -215,7 +215,8 @@ class MaterialSpec {
   final String doorColor;
   final EdgeBandSpec edgeBand;
   final PanelSize panelSize;
-  final double thicknessMm;     // default 18
+  final double thicknessMm;         // govde/kapak kalinligi (default 18)
+  final double arkalikThicknessMm;  // arkalik kalinligi (3 veya 8)
 
   const MaterialSpec({
     this.bodyMaterial = MalzemeTip.mdflam,
@@ -225,6 +226,7 @@ class MaterialSpec {
     this.edgeBand = const EdgeBandSpec(),
     this.panelSize = PanelSize.p2100x2800,
     this.thicknessMm = 18,
+    this.arkalikThicknessMm = 8,
   });
 }
 

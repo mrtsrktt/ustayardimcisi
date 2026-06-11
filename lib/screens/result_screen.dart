@@ -19,6 +19,7 @@ class ResultScreen extends ConsumerStatefulWidget {
   final String tezgahTipi, kulpTipi, customerName;
   final int cekmeceSayisi;
   final bool camli;
+  final double arkalikKalinlik;
 
   const ResultScreen({
     super.key, required this.wallLengthMm,
@@ -27,6 +28,7 @@ class ResultScreen extends ConsumerStatefulWidget {
     required this.ustKapakMalzeme, required this.ustKapakRenk,
     required this.tezgahTipi, required this.kulpTipi, required this.customerName,
     required this.cekmeceSayisi, required this.camli,
+    this.arkalikKalinlik = 8,
   });
 
   @override
@@ -70,6 +72,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       doorMaterial: _parseMalzeme(widget.altKapakMalzeme),
       doorColor: widget.altKapakRenk,
       edgeBand: const EdgeBandSpec(thicknessMm: 2),
+      arkalikThicknessMm: widget.arkalikKalinlik,
     );
 
     final placement = PlacementEngine.placeLower(PlacementInput(

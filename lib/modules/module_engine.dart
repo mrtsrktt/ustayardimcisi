@@ -138,29 +138,30 @@ class FrontCalc {
 
 class ArkalikCalc {
   /// Çakma (surface-mounted) back panel
-  static Part cakma(String modId, double G, double Y) {
+  static Part cakma(String modId, double G, double Y, MaterialSpec mat) {
     return PartBuilder.part(
       moduleId: modId,
-      name: 'Arkalık',
+      name: 'Arkalik',
       qty: 1,
       netWidth: G - 4,
       netLength: Y - 4,
-      thickness: ModuleDefaults.ta,
-      materialFull: ModuleEngine.arkalikMat(), role: 'arkalik',
+      thickness: mat.arkalikThicknessMm,
+      materialFull: ModuleEngine.arkalikMat(mat), role: 'arkalik',
       banding: [0, 0, 0, 0],
     );
   }
 
-  /// Kanal (groove-mounted) back panel
-  static Part kanal(String modId, double G, double Y, {double k = 8}) {
+  /// Kanal (groove-mounted) back panel. k = kanal derinligi ≈ arkalik kalinligi
+  static Part kanal(String modId, double G, double Y, MaterialSpec mat) {
+    final k = mat.arkalikThicknessMm;
     return PartBuilder.part(
       moduleId: modId,
-      name: 'Arkalık',
+      name: 'Arkalik',
       qty: 1,
       netWidth: G - 2 * ModuleDefaults.t + 2 * k,
       netLength: Y - 2 * ModuleDefaults.t + 2 * k,
-      thickness: ModuleDefaults.ta,
-      materialFull: ModuleEngine.arkalikMat(), role: 'arkalik',
+      thickness: mat.arkalikThicknessMm,
+      materialFull: ModuleEngine.arkalikMat(mat), role: 'arkalik',
       banding: [0, 0, 0, 0],
     );
   }
@@ -189,8 +190,8 @@ class ModuleEngine {
       '${_matName(mat.doorMaterial)} ${mat.thicknessMm.toInt()}mm ${mat.doorColor}';
 
   /// Build full material name for back panel.
-  static String arkalikMat() =>
-      'Arkalik ${ModuleDefaults.ta.toInt()}mm';
+  static String arkalikMat(MaterialSpec mat) =>
+      'Arkalik ${mat.arkalikThicknessMm.toInt()}mm';
 
   /// Generate full part list for a single module.
   List<Part> generateParts(Module mod, MaterialSpec mat) {
@@ -250,8 +251,8 @@ class ModuleEngine {
 
     // 6. Arkalık
     final arkalik = settings.arkalikTip == ArkalikTip.kanal
-        ? ArkalikCalc.kanal(modId, G, Y)
-        : ArkalikCalc.cakma(modId, G, Y);
+        ? ArkalikCalc.kanal(modId, G, Y, mat)
+        : ArkalikCalc.cakma(modId, G, Y, mat);
     parts.add(arkalik);
 
     // 7. Kapak ×1 (tek kapak)
@@ -346,7 +347,7 @@ class ModuleEngine {
       // Kutu dibi
       parts.add(PartBuilder.part(moduleId: modId, name: 'Kutu dibi', qty: 1,
           netWidth: boxDisEn, netLength: rayBoy.toDouble(),
-          thickness: ModuleDefaults.ta, materialFull: ModuleEngine.arkalikMat(), role: 'arkalik',
+          thickness: ModuleDefaults.ta, materialFull: ModuleEngine.arkalikMat(mat), role: 'arkalik',
           banding: [0, 0, 0, 0]));
     }
 
@@ -432,7 +433,7 @@ class ModuleEngine {
     final arkaBoy = Y - fb - t - 4;
     parts.add(PartBuilder.part(moduleId: modId, name: 'Arkalık', qty: 1,
         netWidth: G - 4, netLength: arkaBoy.clamp(0, arkaBoy),
-        thickness: ModuleDefaults.ta, materialFull: ModuleEngine.arkalikMat(), role: 'arkalik',
+        thickness: ModuleDefaults.ta, materialFull: ModuleEngine.arkalikMat(mat), role: 'arkalik',
         banding: [0, 0, 0, 0]));
 
     // Üst ön (çekmece veya sabit panel)
@@ -457,7 +458,7 @@ class ModuleEngine {
           thickness: t, materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [0.4, 0, 0, 0]));
       parts.add(PartBuilder.part(moduleId: modId, name: 'Kutu dibi', qty: 1,
           netWidth: boxDisEn, netLength: rayBoy.toDouble(),
-          thickness: ModuleDefaults.ta, materialFull: ModuleEngine.arkalikMat(), role: 'arkalik',
+          thickness: ModuleDefaults.ta, materialFull: ModuleEngine.arkalikMat(mat), role: 'arkalik',
           banding: [0, 0, 0, 0]));
     }
 
@@ -527,10 +528,10 @@ class ModuleEngine {
     // Arkalık ×2
     parts.add(PartBuilder.part(moduleId: modId, name: 'Arkalık P1', qty: 1,
         netWidth: G1 - 4, netLength: Y - 4, thickness: ModuleDefaults.ta,
-        materialFull: ModuleEngine.arkalikMat(), role: 'arkalik', banding: [0, 0, 0, 0]));
+        materialFull: ModuleEngine.arkalikMat(mat), role: 'arkalik', banding: [0, 0, 0, 0]));
     parts.add(PartBuilder.part(moduleId: modId, name: 'Arkalık P2', qty: 1,
         netWidth: G2 - D - 4, netLength: Y - 4, thickness: ModuleDefaults.ta,
-        materialFull: ModuleEngine.arkalikMat(), role: 'arkalik', banding: [0, 0, 0, 0]));
+        materialFull: ModuleEngine.arkalikMat(mat), role: 'arkalik', banding: [0, 0, 0, 0]));
 
     // Kapak ×1
     final kapakEn = G1 - D - kd - 2 * ModuleDefaults.reveal;
@@ -583,8 +584,8 @@ class ModuleEngine {
 
     // Arkalık
     final arkalik = settings.arkalikTip == ArkalikTip.kanal
-        ? ArkalikCalc.kanal(modId, G, Y)
-        : ArkalikCalc.cakma(modId, G, Y);
+        ? ArkalikCalc.kanal(modId, G, Y, mat)
+        : ArkalikCalc.cakma(modId, G, Y, mat);
     parts.add(arkalik);
 
     // Kapak ×1
@@ -729,10 +730,10 @@ class ModuleEngine {
     // Arkalık ×2
     parts.add(PartBuilder.part(moduleId: modId, name: 'Arkalık P1', qty: 1,
         netWidth: G1 - 4, netLength: Y - 4, thickness: ModuleDefaults.ta,
-        materialFull: ModuleEngine.arkalikMat(), role: 'arkalik', banding: [0, 0, 0, 0]));
+        materialFull: ModuleEngine.arkalikMat(mat), role: 'arkalik', banding: [0, 0, 0, 0]));
     parts.add(PartBuilder.part(moduleId: modId, name: 'Arkalık P2', qty: 1,
         netWidth: G2 - D - 4, netLength: Y - 4, thickness: ModuleDefaults.ta,
-        materialFull: ModuleEngine.arkalikMat(), role: 'arkalik', banding: [0, 0, 0, 0]));
+        materialFull: ModuleEngine.arkalikMat(mat), role: 'arkalik', banding: [0, 0, 0, 0]));
 
     // Kapak ×1
     final kapakEn = G1 - D - kd - 2 * ModuleDefaults.reveal;
@@ -785,14 +786,14 @@ class ModuleEngine {
       // Split into 2 pieces; ek kayıt arkasında
       parts.add(PartBuilder.part(moduleId: modId, name: 'Arkalık alt', qty: 1,
           netWidth: G - 4, netLength: 1400, thickness: ModuleDefaults.ta,
-          materialFull: ModuleEngine.arkalikMat(), role: 'arkalik', banding: [0, 0, 0, 0]));
+          materialFull: ModuleEngine.arkalikMat(mat), role: 'arkalik', banding: [0, 0, 0, 0]));
       parts.add(PartBuilder.part(moduleId: modId, name: 'Arkalık üst', qty: 1,
           netWidth: G - 4, netLength: arkaBoy - 1400, thickness: ModuleDefaults.ta,
-          materialFull: ModuleEngine.arkalikMat(), role: 'arkalik', banding: [0, 0, 0, 0]));
+          materialFull: ModuleEngine.arkalikMat(mat), role: 'arkalik', banding: [0, 0, 0, 0]));
     } else {
       final arkalik = settings.arkalikTip == ArkalikTip.kanal
-          ? ArkalikCalc.kanal(modId, G, Y)
-          : ArkalikCalc.cakma(modId, G, Y);
+          ? ArkalikCalc.kanal(modId, G, Y, mat)
+          : ArkalikCalc.cakma(modId, G, Y, mat);
       parts.add(arkalik);
     }
 
@@ -865,8 +866,8 @@ class ModuleEngine {
           materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [1, 0, 0, 0]));
     }
     final arkalik = settings.arkalikTip == ArkalikTip.kanal
-        ? ArkalikCalc.kanal(modId, G, Y)
-        : ArkalikCalc.cakma(modId, G, Y);
+        ? ArkalikCalc.kanal(modId, G, Y, mat)
+        : ArkalikCalc.cakma(modId, G, Y, mat);
     parts.add(arkalik);
 
     return parts;
@@ -891,8 +892,8 @@ class ModuleEngine {
           materialFull: ModuleEngine.govdeMat(mat), role: 'govde', banding: [1, 0, 0, 0]));
     }
     final arkalik = settings.arkalikTip == ArkalikTip.kanal
-        ? ArkalikCalc.kanal(modId, G, Y)
-        : ArkalikCalc.cakma(modId, G, Y);
+        ? ArkalikCalc.kanal(modId, G, Y, mat)
+        : ArkalikCalc.cakma(modId, G, Y, mat);
     parts.add(arkalik);
 
     return parts;
