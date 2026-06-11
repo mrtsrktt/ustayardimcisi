@@ -231,10 +231,18 @@ class MaterialSpec {
 }
 
 class EdgeBandSpec {
-  final double thicknessMm;     // 0.4 / 1 / 2
-  final String color;           // matches body or door
+  final double govdeThicknessMm;  // govde bant kalinligi (0.4/1/2)
+  final double kapakThicknessMm;  // kapak bant kalinligi (0.4/1/2)
+  final String color;             // matches body or door
 
-  const EdgeBandSpec({this.thicknessMm = 1, this.color = ''});
+  const EdgeBandSpec({
+    this.govdeThicknessMm = 1,
+    this.kapakThicknessMm = 2,
+    this.color = '',
+  });
+
+  /// Legacy accessor for backward compat.
+  double get thicknessMm => govdeThicknessMm;
 }
 
 // ─── Part ────────────────────────────────────────────────────────────────────

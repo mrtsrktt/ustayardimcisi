@@ -45,6 +45,8 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
   String _kulpTipi = 'Modern';
   String _tezgahTipi = 'Laminant';
   double _arkalikKalinlik = 8; // 3 veya 8 mm
+  double _govdeBant = 1;   // Govde bant kalinligi (0.4 / 1 / 2)
+  double _kapakBant = 2;   // Kapak bant kalinligi (0.4 / 1 / 2)
 
   double _wallLengthMm = 3000;
   final _duvarCtrl = TextEditingController(text: '300');
@@ -341,6 +343,22 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
     );
   }
 
+  Widget _bantKart(String label, double value, double current, Function(double) onTap) {
+    final sel = current == value;
+    return GestureDetector(
+      onTap: () => onTap(value),
+      child: Container(
+        width: 90, height: 56,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: sel ? Colors.blue : Colors.grey[300]!, width: sel ? 3 : 1),
+          color: sel ? Colors.blue.withAlpha(20) : null,
+        ),
+        child: Center(child: Text(label, style: TextStyle(fontSize: 17, fontWeight: sel ? FontWeight.bold : FontWeight.normal))),
+      ),
+    );
+  }
+
   Widget _sectionTitle(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -458,6 +476,28 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
               _arkalikKart('8 mm', 8),
             ],
           ),
+          const SizedBox(height: 16),
+
+          Text('Govde Bant Kalinligi', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 10),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            _bantKart('0.4 mm', 0.4, _govdeBant, (v) => setState(() => _govdeBant = v)),
+            const SizedBox(width: 12),
+            _bantKart('1 mm', 1, _govdeBant, (v) => setState(() => _govdeBant = v)),
+            const SizedBox(width: 12),
+            _bantKart('2 mm', 2, _govdeBant, (v) => setState(() => _govdeBant = v)),
+          ]),
+          const SizedBox(height: 16),
+
+          Text('Kapak Bant Kalinligi', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 10),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            _bantKart('0.4 mm', 0.4, _kapakBant, (v) => setState(() => _kapakBant = v)),
+            const SizedBox(width: 12),
+            _bantKart('1 mm', 1, _kapakBant, (v) => setState(() => _kapakBant = v)),
+            const SizedBox(width: 12),
+            _bantKart('2 mm', 2, _kapakBant, (v) => setState(() => _kapakBant = v)),
+          ]),
           const SizedBox(height: 16),
 
           Text('Tezgah', style: Theme.of(context).textTheme.titleMedium),

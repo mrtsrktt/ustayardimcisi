@@ -71,7 +71,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       bodyColor: widget.govdeRenk,
       doorMaterial: _parseMalzeme(widget.altKapakMalzeme),
       doorColor: widget.altKapakRenk,
-      edgeBand: const EdgeBandSpec(thicknessMm: 2),
+      edgeBand: const EdgeBandSpec(govdeThicknessMm: 1, kapakThicknessMm: 2),
       arkalikThicknessMm: widget.arkalikKalinlik,
     );
 

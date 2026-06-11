@@ -355,7 +355,21 @@ class CostCalculator {
       ));
     }
 
-    // 6. Labor
+    // 6. Bantlama isciligi (malzemeden AYRI)
+    for (final entry in bandingMetraj.entries) {
+      final thickness = double.tryParse(
+          entry.key.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 1;
+      final iscilikPrice = thickness <= 0.5 ? 10.0 : thickness <= 1.0 ? 20.0 : 40.0;
+      lines.add(CostLine(
+        item: 'Bantlama isciligi (${entry.key})',
+        qty: entry.value,
+        unit: 'm',
+        unitPrice: iscilikPrice,
+        total: iscilikPrice * entry.value,
+      ));
+    }
+
+    // 7. Labor
     final modulCount = allParts.map((p) => p.moduleId).toSet().length;
     lines.add(CostLine(
       item: 'Montaj iscilik',

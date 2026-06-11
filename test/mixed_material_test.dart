@@ -17,7 +17,7 @@ void main() {
       bodyColor: 'Beyaz',
       doorMaterial: MalzemeTip.highGloss,
       doorColor: 'Antrasit',
-      edgeBand: const EdgeBandSpec(thicknessMm: 2),
+      edgeBand: const EdgeBandSpec(govdeThicknessMm: 1, kapakThicknessMm: 2),
     );
 
     final engine = ModuleEngine();
@@ -262,7 +262,7 @@ void main() {
         bodyColor: 'Antrasit',
         doorMaterial: MalzemeTip.akrilik,
         doorColor: 'Beyaz',
-        edgeBand: const EdgeBandSpec(thicknessMm: 2),
+        edgeBand: const EdgeBandSpec(govdeThicknessMm: 1, kapakThicknessMm: 2),
       );
 
       final modules = [

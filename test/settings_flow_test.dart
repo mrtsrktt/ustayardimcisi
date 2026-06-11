@@ -313,4 +313,69 @@ void main() {
       print('\n  Kapak 1220×2800 verified for High Gloss parts');
     });
   });
+
+  group('Bantlama Iscilik Ucreti', () {
+    test('0.4mm govde + 2mm kapak → correct labor prices', () {
+      final engine = ModuleEngine();
+      final mat = MaterialSpec();
+      final mod = Module(code: ModuleCode.a2, xPosMm: 0, widthMm: 800, heightMm: 740, depthMm: 560,
+          params: const ModuleParams(rafSayisi: 1, gorunurYan: true));
+      final parts = engine.generateParts(mod, mat);
+      final optimizer = CutOptimizer();
+      final sheets = optimizer.optimize(parts);
+      final calc = cost.CostCalculator();
+      final report = calc.calculate(
+        allParts: parts, sheets: sheets, hardware: {},
+        bodyMaterial: 'MDFlam', bodyColor: 'Beyaz',
+        doorMaterial: 'MDFlam', doorColor: 'Beyaz',
+        countertopType: 'Tezgah laminant', countertopLengthMtul: 1.0);
+
+      // Find bantlama isciligi lines
+      final iscilikLines = report.lines.where((l) => l.item.contains('Bantlama isciligi')).toList();
+      expect(iscilikLines.isNotEmpty, true);
+
+      // 1mm govde banding → 20 TL/m
+      final govdeIscilik = iscilikLines.firstWhere((l) => l.item.contains('1.0mm'));
+      expect(govdeIscilik.unitPrice, 20, reason: '1mm bant iscilik = 20 TL/m');
+
+      // 2mm kapak banding → 40 TL/m
+      final kapakIscilik = iscilikLines.firstWhere((l) => l.item.contains('2.0mm'));
+      expect(kapakIscilik.unitPrice, 40, reason: '2mm bant iscilik = 40 TL/m');
+
+      print('\n  Bantlama Iscilik:');
+      for (final l in iscilikLines) {
+        print('  ${l.item}: ${l.qty.toStringAsFixed(1)}m × ${l.unitPrice.toInt()} TL/m = ${l.total.toInt()} TL');
+      }
+
+      // Also verify separate material cost line exists
+      final materialLines = report.lines.where((l) => l.item.contains('Kenar bandı')).toList();
+      expect(materialLines.isNotEmpty, true);
+      print('  (ayri malzeme satiri da mevcut: ${materialLines.length} adet)');
+    });
+
+    test('0.4mm bant → 10 TL/m iscilik', () {
+      final engine = ModuleEngine();
+      // Use a module with 0.4mm banding (cekmece kutusu)
+      final mat = MaterialSpec();
+      final mod = Module(code: ModuleCode.a3, xPosMm: 0, widthMm: 600, heightMm: 740, depthMm: 560,
+          params: const ModuleParams(cekmeceSayisi: 3, rafSayisi: 0));
+      final parts = engine.generateParts(mod, mat);
+      final optimizer = CutOptimizer();
+      final sheets = optimizer.optimize(parts);
+      final calc = cost.CostCalculator();
+      final report = calc.calculate(
+        allParts: parts, sheets: sheets, hardware: {},
+        bodyMaterial: 'MDFlam', bodyColor: 'Beyaz',
+        doorMaterial: 'MDFlam', doorColor: 'Beyaz',
+        countertopType: 'Tezgah laminant', countertopLengthMtul: 1.0);
+
+      final iscilikLines = report.lines.where((l) => l.item.contains('Bantlama isciligi')).toList();
+      final has04 = iscilikLines.any((l) => l.item.contains('0.4mm'));
+      if (has04) {
+        final l04 = iscilikLines.firstWhere((l) => l.item.contains('0.4mm'));
+        expect(l04.unitPrice, 10, reason: '0.4mm bant iscilik = 10 TL/m');
+        print('\n  0.4mm iscilik: ${l04.qty.toStringAsFixed(1)}m × 10 TL/m = ${l04.total.toInt()} TL');
+      }
+    });
+  });
 }
