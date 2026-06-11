@@ -53,7 +53,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   final _marjCtrl = TextEditingController();
   double _marjYuzde = 0;
   double _teklifTutar = 0;
-  String? _oncekiOzet; // onceki hesaplama ozeti
+  String? _oncekiOzet;
+  int _planVersion = 1;
+  int _recalcCount = 0;
 
   late List<Part> _allParts;
   late List<SheetLayout> _sheets;
@@ -285,6 +287,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   }
 
   void _hesaplaWithSizes(String govdeEbat, String kapakEbat, String arkalikEbat) {
+    _recalcCount++;
+    setState(() => _planVersion = 1 + _recalcCount);
+
     PlateSize parse(String s) {
       final parts = s.split('×');
       return PlateSize(widthMm: double.parse(parts[0]), lengthMm: double.parse(parts[1]));
@@ -322,7 +327,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final metraj = BandingCalculator.calculateMetraj(_allParts);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Kesim Sonucu'), centerTitle: true),
+      appBar: AppBar(title: Text('Kesim Sonucu — Plan v$_planVersion'), centerTitle: true),
       body: SafeArea(
         child: Column(
           children: [
