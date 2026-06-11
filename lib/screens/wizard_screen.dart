@@ -50,12 +50,20 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
   double _govdeBant = 1;   // Govde bant kalinligi (0.4 / 1 / 2)
   double _kapakBant = 2;   // Kapak bant kalinligi (0.4 / 1 / 2)
 
+  // Cihaz konumlari (cm, 0 = isaretlenmemis)
+  final _evyeCtrl = TextEditingController();
+  final _ocakCtrl = TextEditingController();
+  final _buzdolabiCtrl = TextEditingController();
+
   double _wallLengthMm = 3000;
   final _duvarCtrl = TextEditingController(text: '300');
 
   @override
   void dispose() {
     _duvarCtrl.dispose();
+    _evyeCtrl.dispose();
+    _ocakCtrl.dispose();
+    _buzdolabiCtrl.dispose();
     super.dispose();
   }
 
@@ -480,6 +488,39 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
           ),
           const SizedBox(height: 16),
 
+          Text('Cihaz Konumlari (bos birakilabilir)', style: Theme.of(context).textTheme.titleMedium),
+          Text('Soldan kac cm? Girilmezse otomatik yerlestirilir.',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _evyeCtrl,
+                  decoration: const InputDecoration(labelText: 'Evye', hintText: 'cm', prefixIcon: Icon(Icons.water_drop, size: 22)),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _ocakCtrl,
+                  decoration: const InputDecoration(labelText: 'Ocak/Firin', hintText: 'cm', prefixIcon: Icon(Icons.local_fire_department, size: 22)),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _buzdolabiCtrl,
+                  decoration: const InputDecoration(labelText: 'Buzdolabi', hintText: 'cm', prefixIcon: Icon(Icons.kitchen, size: 22)),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
           Text('Govde Bant Kalinligi', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 10),
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -531,11 +572,18 @@ class _WizardScreenState extends ConsumerState<WizardScreen> {
     final wallCm = double.tryParse(_duvarCtrl.text) ?? 300;
     _wallLengthMm = wallCm * 10;
 
-    // Run placement engine
+    // Build anchors from user input (cm → mm)
+    final anchors = WallAnchors(
+      sinkCenterMm: (_evyeCtrl.text.isEmpty ? null : (double.tryParse(_evyeCtrl.text) ?? 0) * 10),
+      cooktopCenterMm: (_ocakCtrl.text.isEmpty ? null : (double.tryParse(_ocakCtrl.text) ?? 0) * 10),
+      fridgeCenterMm: (_buzdolabiCtrl.text.isEmpty ? null : (double.tryParse(_buzdolabiCtrl.text) ?? 0) * 10),
+    );
+
+    // Run placement engine with anchors
     final altResult = PlacementEngine.placeLower(PlacementInput(
-        wallLengthMm: _wallLengthMm, isLower: true));
+        wallLengthMm: _wallLengthMm, isLower: true, anchors: anchors));
     final ustResult = PlacementEngine.placeUpper(PlacementInput(
-        wallLengthMm: _wallLengthMm, isLower: false));
+        wallLengthMm: _wallLengthMm, isLower: false, anchors: anchors));
     final totalAlt = altResult.modules.fold<double>(0, (s, m) => s + m.widthMm);
     final totalUst = ustResult.modules.fold<double>(0, (s, m) => s + m.widthMm);
 
