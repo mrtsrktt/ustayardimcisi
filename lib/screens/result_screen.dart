@@ -47,6 +47,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   final _marjCtrl = TextEditingController();
   double _marjYuzde = 0;
   double _teklifTutar = 0;
+  String? _oncekiOzet; // onceki hesaplama ozeti
 
   late List<Part> _allParts;
   late List<SheetLayout> _sheets;
@@ -196,6 +197,109 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     'Membran' => MalzemeTip.membran, 'Akrilik' => MalzemeTip.akrilik,
     _ => MalzemeTip.mdflam,
   };
+
+  void _farkliEbatHesapla() {
+    final totalParts = _allParts.fold<int>(0, (s, p) => s + p.qty);
+    final avgWaste = _sheets.isEmpty ? 0.0
+        : _sheets.map((s) => s.wastePct).reduce((a, b) => a + b) / _sheets.length;
+    // Save current summary for comparison
+    setState(() {
+      _oncekiOzet = 'Onceki: $_sheets.length plaka, $totalParts parca, %${avgWaste.toStringAsFixed(1)} fire';
+    });
+
+    // Show ebat dialog with current sizes, then recalculate
+    _ebatDialog();
+  }
+
+  void _ebatDialog() {
+    String govdeEbat = '${widget.govdePlateSize.widthMm.toInt()}×${widget.govdePlateSize.lengthMm.toInt()}';
+    String kapakEbat = '${widget.kapakPlateSize.widthMm.toInt()}×${widget.kapakPlateSize.lengthMm.toInt()}';
+    String arkalikEbat = '${widget.arkalikPlateSize.widthMm.toInt()}×${widget.arkalikPlateSize.lengthMm.toInt()}';
+
+    final govdeOpts = ['2100×2800', '1830×3660'];
+    final kapakOpts = ['2100×2800', '1830×3660', '1220×2800'];
+    final arkalikOpts = ['2100×2800', '1830×3660'];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) => AlertDialog(
+          title: const Text('Farkli Ebat Sec', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_oncekiOzet != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(color: Colors.amber.withAlpha(20), borderRadius: BorderRadius.circular(8)),
+                    child: Text(_oncekiOzet!, style: const TextStyle(fontSize: 14)),
+                  ),
+                Text('Govde', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ...govdeOpts.map((e) => RadioListTile<String>(
+                  title: Text(e, style: const TextStyle(fontSize: 18)),
+                  value: e, groupValue: govdeEbat, onChanged: (v) => setDlg(() => govdeEbat = v!),
+                )),
+                const Divider(),
+                Text('Kapak', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ...kapakOpts.map((e) => RadioListTile<String>(
+                  title: Text(e, style: const TextStyle(fontSize: 18)),
+                  value: e, groupValue: kapakEbat, onChanged: (v) => setDlg(() => kapakEbat = v!),
+                )),
+                const Divider(),
+                Text('Arkalik', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ...arkalikOpts.map((e) => RadioListTile<String>(
+                  title: Text(e, style: const TextStyle(fontSize: 18)),
+                  value: e, groupValue: arkalikEbat, onChanged: (v) => setDlg(() => arkalikEbat = v!),
+                )),
+              ],
+            ),
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity, height: 56,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  setState(() {
+                    _hesaplaWithSizes(govdeEbat, kapakEbat, arkalikEbat);
+                  });
+                },
+                child: const Text('TEKRAR HESAPLA', style: TextStyle(fontSize: 20)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _hesaplaWithSizes(String govdeEbat, String kapakEbat, String arkalikEbat) {
+    PlateSize parse(String s) {
+      final parts = s.split('×');
+      return PlateSize(widthMm: double.parse(parts[0]), lengthMm: double.parse(parts[1]));
+    }
+    final govdePS = parse(govdeEbat);
+    final kapakPS = parse(kapakEbat);
+    final arkalikPS = parse(arkalikEbat);
+
+    _sheets = CutOptimizer(config: CutConfig(
+      kerfMm: 4.8, trimMm: 10,
+      materialSizes: {'govde': govdePS, 'kapak': kapakPS, 'arkalik': arkalikPS},
+    )).optimize(_allParts);
+
+    _bandingMetraj = BandingCalculator.totalMetrajWithFire(_allParts);
+    final calc = cost.CostCalculator();
+    _costReport = calc.calculate(
+      allParts: _allParts, sheets: _sheets, hardware: _hardware,
+      bodyMaterial: widget.govdeMalzeme, bodyColor: widget.govdeRenk,
+      doorMaterial: widget.altKapakMalzeme, doorColor: widget.altKapakRenk,
+      edgeBandThickness: 2,
+    );
+  }
 
   void _mesaj(String msg, [bool err = false]) {
     if (!mounted) return;
@@ -672,18 +776,64 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   // ─── TAB 2: Indir ─────────────────────────────────────────────────────
 
   Widget _tabIndir() {
+    final totalParts = _allParts.fold<int>(0, (s, p) => s + p.qty);
+    final avgWaste = _sheets.isEmpty ? 0.0
+        : _sheets.map((s) => s.wastePct).reduce((a, b) => a + b) / _sheets.length;
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          const SizedBox(height: 20),
-          Icon(Icons.download, size: 64, color: Colors.grey[300]),
+          // Onceki hesaplama ozeti (varsa)
+          if (_oncekiOzet != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.amber.withAlpha(20),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.amber),
+              ),
+              child: Text(_oncekiOzet!, style: const TextStyle(fontSize: 15)),
+            ),
+
+          // Su anki ozet
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green.withAlpha(15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text('Bu hesaplama: $_sheets.length plaka, $totalParts parca, %${avgWaste.toStringAsFixed(1)} fire',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+          ),
           const SizedBox(height: 16),
+
+          // Farkli ebatla tekrar hesapla
+          SizedBox(
+            width: double.infinity, height: 56,
+            child: OutlinedButton.icon(
+              onPressed: _farkliEbatHesapla,
+              icon: const Icon(Icons.refresh, size: 24),
+              label: const Text('Farkli Ebatla Tekrar Hesapla', style: TextStyle(fontSize: 18)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.orange, width: 2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+
+          Icon(Icons.download, size: 48, color: Colors.grey[300]),
+          const SizedBox(height: 12),
           Text('Raporlari Indir', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 8),
           Text('PDF plaka semalari ve Excel kesim listesi',
               style: TextStyle(fontSize: 16, color: Colors.grey[600])),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity, height: 64,
             child: ElevatedButton.icon(
